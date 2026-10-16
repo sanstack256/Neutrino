@@ -18,30 +18,36 @@ fi
 echo "2. Seeding synthetic graph operational data..."
 pnpm seed > /dev/null
 
-echo "3. Starting Neutrino API service in background..."
-npx tsx apps/api/src/server.ts &
-API_PID=$!
+ALREADY_RUNNING=0
+if curl -sf "${BASE_URL}/health" > /dev/null 2>&1; then
+  echo "✓ Existing API server detected running at ${BASE_URL}."
+  ALREADY_RUNNING=1
+else
+  echo "3. Starting Neutrino API service in background..."
+  npx tsx apps/api/src/server.ts &
+  API_PID=$!
 
-cleanup() {
-  echo "Stopping background API service (PID $API_PID)..."
-  kill $API_PID 2>/dev/null || true
-}
-trap cleanup EXIT
+  cleanup() {
+    echo "Stopping background API service (PID $API_PID)..."
+    kill $API_PID 2>/dev/null || true
+  }
+  trap cleanup EXIT
 
-# Wait for API readiness
-echo "Waiting for API readiness at ${BASE_URL}/health..."
-READY=0
-for i in {1..20}; do
-  if curl -sf "${BASE_URL}/health" > /dev/null 2>&1; then
-    READY=1
-    break
+  # Wait for API readiness
+  echo "Waiting for API readiness at ${BASE_URL}/health..."
+  READY=0
+  for i in {1..20}; do
+    if curl -sf "${BASE_URL}/health" > /dev/null 2>&1; then
+      READY=1
+      break
+    fi
+    sleep 0.5
+  done
+
+  if [ $READY -ne 1 ]; then
+    echo "ERROR: API failed to become ready within timeout."
+    exit 1
   fi
-  sleep 0.5
-done
-
-if [ $READY -ne 1 ]; then
-  echo "ERROR: API failed to become ready within timeout."
-  exit 1
 fi
 
 echo "✓ API is live."

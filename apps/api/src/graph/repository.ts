@@ -390,8 +390,9 @@ export class GraphRepository {
       OPTIONAL MATCH (s)-[r5:HAS_DEPLOYMENT]->(d1:Deployment)
       OPTIONAL MATCH (dep)-[r6:HAS_DEPLOYMENT]->(d2:Deployment)
       OPTIONAL MATCH (e:Evidence)-[r7:OBSERVED_IN]->(i)
+      OPTIONAL MATCH (e)-[r9:REFERENCES]->(src:SourceRecord)
       OPTIONAL MATCH (i)-[r8:RELATED_TO]-(hist:Incident)
-      RETURN i, s, dep, t1, t2, d1, d2, e, hist, r1, r3, r4, r5, r6, r7, r8
+      RETURN i, s, dep, t1, t2, d1, d2, e, src, hist
       LIMIT 100
     `;
 
@@ -399,6 +400,7 @@ export class GraphRepository {
 
     const nodesMap = new Map<string, GraphNode>();
     const edgesMap = new Map<string, GraphEdge>();
+    const serviceIds = new Set<string>();
 
     const addNode = (n: any) => {
       if (!n || !n.properties) return;
@@ -434,7 +436,11 @@ export class GraphRepository {
       addNode(row.d1);
       addNode(row.d2);
       addNode(row.e);
+      addNode(row.src);
       addNode(row.hist);
+
+      if (row.s?.properties?.id) serviceIds.add(row.s.properties.id);
+      if (row.dep?.properties?.id) serviceIds.add(row.dep.properties.id);
 
       if (row.i?.properties?.id && row.s?.properties?.id) {
         addEdge(row.i.properties.id, row.s.properties.id, 'AFFECTS');
@@ -454,16 +460,21 @@ export class GraphRepository {
       if (row.e?.properties?.id && row.i?.properties?.id) {
         addEdge(row.e.properties.id, row.i.properties.id, 'OBSERVED_IN');
       }
+      if (row.e?.properties?.id && row.src?.properties?.id) {
+        addEdge(row.e.properties.id, row.src.properties.id, 'REFERENCES');
+      }
       if (row.i?.properties?.id && row.hist?.properties?.id) {
         addEdge(row.i.properties.id, row.hist.properties.id, 'RELATED_TO');
       }
     }
 
-    // Connect service dependencies explicitly
-    if (nodesMap.size > 0) {
+    // Connect service dependencies explicitly between known services in subgraph
+    if (serviceIds.size > 0) {
       const depRelsRes = await graph.query(
         `MATCH (s1:Service)-[r:DEPENDS_ON]->(s2:Service)
-         RETURN s1.id AS src, s2.id AS tgt LIMIT 50`
+         WHERE s1.id IN $svcIds AND s2.id IN $svcIds
+         RETURN s1.id AS src, s2.id AS tgt`,
+        { params: { svcIds: Array.from(serviceIds) } }
       );
       for (const row of depRelsRes.data || []) {
         if (nodesMap.has(row.src) && nodesMap.has(row.tgt)) {

@@ -17,7 +17,8 @@
     "db:down": "docker compose down",
     "db:status": "docker compose ps",
     "typecheck": "pnpm --filter \"@neutrino/*\" typecheck",
-    "smoke": "bash scripts/smoke-test.sh"
+    "smoke": "bash scripts/smoke-test.sh",
+    "bench": "tsx scripts/benchmark.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

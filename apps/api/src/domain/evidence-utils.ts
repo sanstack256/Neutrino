@@ -56,12 +56,12 @@ export class EvidenceUtils {
   }
 
   /**
-   * Identifies candidate deployments occurring within a given time window before an incident
+   * Identifies candidate deployments occurring strictly within a valid time window before an incident
    */
   public static findPrecedingDeployments(
     deployments: Deployment[],
     incidentStartTime: string,
-    lookbackMinutes = 120
+    lookbackMinutes = 180
   ): Deployment[] {
     const incidentEpoch = new Date(incidentStartTime).getTime();
     const windowStart = incidentEpoch - lookbackMinutes * 60 * 1000;
@@ -69,9 +69,34 @@ export class EvidenceUtils {
     return deployments
       .filter((d) => {
         const depEpoch = new Date(d.deployedAt).getTime();
+        // Deployment must strictly occur before or at incident onset, within lookback window
         return depEpoch >= windowStart && depEpoch <= incidentEpoch;
       })
       .sort((a, b) => new Date(b.deployedAt).getTime() - new Date(a.deployedAt).getTime());
+  }
+
+  /**
+   * Filters out stale evidence records that fall outside the active incident temporal window
+   */
+  public static isWithinIncidentWindow(
+    ev: Evidence | string,
+    incidentStartTime?: string,
+    incidentResolvedTime?: string | null,
+    preWindowMinutes = 60,
+    postWindowMinutes = 60
+  ): boolean {
+    if (!incidentStartTime) return true;
+    const timeStr = typeof ev === 'string' ? ev : ev.observedAt;
+    const evTime = new Date(timeStr).getTime();
+    const startTime = new Date(incidentStartTime).getTime();
+    const minTime = startTime - preWindowMinutes * 60 * 1000;
+
+    let maxTime = Number.POSITIVE_INFINITY;
+    if (incidentResolvedTime) {
+      maxTime = new Date(incidentResolvedTime).getTime() + postWindowMinutes * 60 * 1000;
+    }
+
+    return evTime >= minTime && evTime <= maxTime;
   }
 
   /**
@@ -120,33 +145,44 @@ export class EvidenceUtils {
   }
 
   /**
-   * Detects known contradictions in the evidence set
-   * e.g., if a hypothesis alleges DB or Redis bottleneck, but metric evidence confirms low latency & healthy pool.
+   * Detects verified contradictions in the evidence set for competing hypotheses.
+   * Enforces temporal validity: stale evidence outside the incident window cannot contradict an active incident.
    */
   public static detectContradictions(
-    evidenceList: Evidence[]
+    evidenceList: Evidence[],
+    incidentStartTime?: string,
+    incidentResolvedTime?: string | null
   ): { targetHypothesisPattern: string; contradictedByEvidenceId: string; reason: string }[] {
     const contradictions: { targetHypothesisPattern: string; contradictedByEvidenceId: string; reason: string }[] = [];
 
     for (const ev of evidenceList) {
-      const text = `${ev.summary} ${ev.content}`.toLowerCase();
-
-      // Check DB bottleneck contradiction
-      if (text.includes('database latency') && (text.includes('< 2ms') || text.includes('healthy') || text.includes('normal'))) {
-        contradictions.push({
-          targetHypothesisPattern: 'database',
-          contradictedByEvidenceId: ev.id,
-          reason: `Metric evidence ${ev.id} indicates database latency is normal (< 2ms) and pool is healthy, contradicting DB bottleneck hypothesis.`,
-        });
+      // Stale evidence cannot contradict an active incident
+      if (!this.isWithinIncidentWindow(ev, incidentStartTime, incidentResolvedTime)) {
+        continue;
       }
 
-      // Check Redis pool contradiction
-      if (text.includes('redis') && (text.includes('latency') || text.includes('cpu')) && (text.includes('1.8ms') || text.includes('< 5%') || text.includes('healthy'))) {
-        contradictions.push({
-          targetHypothesisPattern: 'redis',
-          contradictedByEvidenceId: ev.id,
-          reason: `Metric evidence ${ev.id} indicates Redis latency is 1.8ms and CPU < 5%, contradicting cache starvation or connection pool exhaustion.`,
-        });
+      const text = `${ev.summary} ${ev.content}`.toLowerCase();
+
+      // Check DB bottleneck contradiction: only when metrics confirm normal latency and healthy pool
+      if (text.includes('postgres') || text.includes('database')) {
+        if (text.includes('< 2ms') || text.includes('healthy') || (text.includes('active_connections') && !text.includes('exhausted'))) {
+          contradictions.push({
+            targetHypothesisPattern: 'database',
+            contradictedByEvidenceId: ev.id,
+            reason: `Temporal metric evidence ${ev.id} observed at ${ev.observedAt} confirms database latency is normal (< 2ms) and pool is healthy, contradicting DB bottleneck hypothesis.`,
+          });
+        }
+      }
+
+      // Check Redis starvation contradiction: only when metrics confirm low latency and healthy CPU
+      if (text.includes('redis')) {
+        if ((text.includes('1.8ms') || text.includes('cpu_percent') || text.includes('healthy')) && !text.includes('saturated') && !text.includes('timeout')) {
+          contradictions.push({
+            targetHypothesisPattern: 'redis',
+            contradictedByEvidenceId: ev.id,
+            reason: `Temporal metric evidence ${ev.id} observed at ${ev.observedAt} confirms Redis latency is steady at 1.8ms and CPU < 5%, contradicting cache resource starvation hypothesis.`,
+          });
+        }
       }
     }
 

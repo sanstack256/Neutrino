@@ -142,4 +142,48 @@ describe('Unit Tests: EvidenceUtils', () => {
     expect(timeline[0].type).toBe('deployment');
     expect(timeline[0].timestamp).toBe('2026-10-15T13:45:00Z');
   });
+
+  it('validates temporal window bounds with isWithinIncidentWindow', () => {
+    const incidentStart = '2026-10-15T14:02:00Z';
+    const incidentEnd = '2026-10-15T15:30:00Z';
+
+    // 10 minutes before incident start: within lookback window
+    expect(EvidenceUtils.isWithinIncidentWindow('2026-10-15T13:50:00Z', incidentStart, incidentEnd)).toBe(true);
+
+    // During active incident: within window
+    expect(EvidenceUtils.isWithinIncidentWindow('2026-10-15T14:15:00Z', incidentStart, incidentEnd)).toBe(true);
+
+    // 4 hours before incident start: stale/outside window
+    expect(EvidenceUtils.isWithinIncidentWindow('2026-10-15T09:00:00Z', incidentStart, incidentEnd)).toBe(false);
+
+    // 5 days before incident start: definitely stale
+    expect(EvidenceUtils.isWithinIncidentWindow('2026-10-10T14:00:00Z', incidentStart, incidentEnd)).toBe(false);
+  });
+
+  it('ignores stale evidence when detecting contradictions if incident window is provided', () => {
+    const staleEvidence: Evidence[] = [
+      {
+        id: 'EV-STALE-DB',
+        sourceType: 'metric',
+        sourceRecordId: 'm-old',
+        observedAt: '2026-10-10T14:00:00Z', // 5 days stale
+        ingestedAt: '2026-10-10T14:00:05Z',
+        summary: 'Database connection pool healthy (stale observation)',
+        content: 'active: 5, idle: 95',
+        contentHash: 'hash-stale',
+        synthetic: true,
+        reliabilityClass: 'high',
+      },
+    ];
+
+    const incidentStart = '2026-10-15T14:02:00Z';
+
+    // Without window filtering, it detects contradiction
+    const withoutWindow = EvidenceUtils.detectContradictions(staleEvidence);
+    expect(withoutWindow.length).toBe(1);
+
+    // With incident window filtering, stale evidence is excluded from contradictions
+    const withWindow = EvidenceUtils.detectContradictions(staleEvidence, incidentStart);
+    expect(withWindow.length).toBe(0);
+  });
 });

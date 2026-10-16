@@ -146,4 +146,74 @@ describe('Unit Tests: HypothesisEngine', () => {
     expect(result.recommendedNextStep).toContain('non-destructive diagnostics');
     expect(result.recommendedNextStep).toContain('auth-service');
   });
+
+  it('flags missing information and produces no supported hypotheses when evidence is missing', () => {
+    const result = HypothesisEngine.evaluate({
+      incident,
+      affectedService,
+      upstreamDependencies: upstreamDeps,
+      deployments: [],
+      evidence: [], // Zero evidence records
+      relatedIncidents: [],
+      investigationPaths: [],
+    });
+
+    expect(result.missingInformation.length).toBeGreaterThanOrEqual(1);
+    expect(result.missingInformation.some((m) => m.includes('Insufficient telemetry'))).toBe(true);
+    expect(result.explanations.some((e) => e.status === 'supported')).toBe(false);
+  });
+
+  it('handles external provider outage evidence gracefully', () => {
+    const externalIncident: Incident = {
+      id: 'INC-2026-042',
+      title: 'Payment gateway webhooks timing out',
+      description: 'Webhook processing failures',
+      severity: 'SEV-2',
+      status: 'investigating',
+      startedAt: '2026-03-01T10:00:00Z',
+      resolvedAt: null,
+      environment: 'production',
+      synthetic: true,
+    };
+
+    const paymentService: Service = {
+      id: 'payment-service',
+      name: 'Payment Service',
+      description: 'Payment gateway integration',
+      criticality: 'tier-1',
+      environment: 'production',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-03-01T00:00:00Z',
+    };
+
+    const externalEvidence: Evidence[] = [
+      {
+        id: 'EV-PAY-1',
+        sourceType: 'status_page',
+        sourceRecordId: 'src-ext',
+        observedAt: '2026-03-01T10:05:00Z',
+        ingestedAt: '2026-03-01T10:05:05Z',
+        summary: 'Stripe API degraded performance webhook delays',
+        content: 'Status page reports upstream degradation in us-east',
+        contentHash: 'hash-stripe',
+        synthetic: true,
+        reliabilityClass: 'authoritative',
+      },
+    ];
+
+    const result = HypothesisEngine.evaluate({
+      incident: externalIncident,
+      affectedService: paymentService,
+      upstreamDependencies: [],
+      deployments: [],
+      evidence: externalEvidence,
+      relatedIncidents: [],
+      investigationPaths: [],
+    });
+
+    const extHyp = result.explanations.find((e) => e.id === 'hyp-external-dependency-failure');
+    expect(extHyp).toBeDefined();
+    expect(extHyp?.status).toBe('supported');
+    expect(extHyp?.supportingEvidenceIds).toContain('EV-PAY-1');
+  });
 });

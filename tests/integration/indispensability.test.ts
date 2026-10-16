@@ -88,4 +88,87 @@ describe('Mandatory Gate D: FalkorDB Graph Indispensability Test', () => {
     expect(errorCaught).toBeDefined();
     expect(errorCaught.message).toMatch(/not found in the graph database|No incident found in graph/);
   });
+
+  it('Phase 3 (Disconnected Graph Topology): Severing the DEPENDS_ON relationship prevents upstream root-cause discovery', async () => {
+    const disconnectedGraphName = 'neutrino_disconnected_test_graph';
+    const manager = FalkorDBManager.getInstance();
+    const disconnectedGraph = await manager.getGraph(disconnectedGraphName);
+    try {
+      await disconnectedGraph.delete();
+    } catch {
+      // ignore
+    }
+
+    // Seed nodes and relationships EXCEPT (checkout-service)-[:DEPENDS_ON]->(auth-service)
+    await disconnectedGraph.query(`
+      CREATE (i:Incident {
+        id: 'INC-2026-101',
+        title: 'Elevated 500 error rate in checkout flow',
+        description: 'Checkout submit failure',
+        severity: 'SEV-1',
+        status: 'investigating',
+        startedAt: '2026-10-15T14:02:00Z',
+        synthetic: true
+      })
+      CREATE (s1:Service {
+        id: 'checkout-service',
+        name: 'Checkout Service',
+        criticality: 'tier-1',
+        environment: 'production'
+      })
+      CREATE (s2:Service {
+        id: 'auth-service',
+        name: 'Authentication Service',
+        criticality: 'tier-1',
+        environment: 'production'
+      })
+      CREATE (d:Deployment {
+        id: 'dep-auth-2.4.1',
+        serviceId: 'auth-service',
+        version: 'v2.4.1',
+        environment: 'production',
+        deployedAt: '2026-10-15T13:45:00Z',
+        status: 'succeeded',
+        changeSummary: 'Reduced signing key cache TTL'
+      })
+      CREATE (e:Evidence {
+        id: 'EV-101-01',
+        sourceType: 'log',
+        sourceRecordId: 'src-apm-datadog',
+        observedAt: '2026-10-15T14:03:00Z',
+        ingestedAt: '2026-10-15T14:03:05Z',
+        summary: 'AuthTokenVerificationError spike',
+        content: 'AuthTokenVerificationError: Signature verification failed',
+        contentHash: 'hash-ev-1',
+        synthetic: true,
+        reliabilityClass: 'authoritative'
+      })
+      CREATE (i)-[:AFFECTS]->(s1)
+      CREATE (s2)-[:HAS_DEPLOYMENT]->(d)
+      CREATE (e)-[:OBSERVED_IN]->(i)
+    `);
+
+    const disconnectedRepo = new GraphRepository({ graphName: disconnectedGraphName });
+    const disconnectedEngine = new InvestigationEngine(disconnectedRepo);
+
+    const result = await disconnectedEngine.execute({
+      question: 'Why is checkout-service failing with 500 errors during token validation?',
+      incidentId: 'INC-2026-101',
+      executionMode: 'deterministic',
+    });
+
+    // Because the DEPENDS_ON edge is severed, the engine CANNOT traverse to auth-service or its deployment
+    const upstreamHyp = result.candidateExplanations.find((h) => h.id === 'hyp-upstream-deployment-desync');
+    expect(upstreamHyp).toBeUndefined();
+
+    // The result cannot claim auth-service deployment as root cause without the graph edge
+    expect(result.candidateRootCause?.id).not.toBe('dep-auth-2.4.1');
+
+    // Clean up test graph
+    try {
+      await disconnectedGraph.delete();
+    } catch {
+      // ignore
+    }
+  });
 });

@@ -19,13 +19,14 @@ Neutrino models the complete operational topology directly in FalkorDB—connect
 ## 2. What Works in Stage 1
 
 - **Real FalkorDB Graph Storage**: 100% of operational entities and relationships are stored and queried in a live FalkorDB instance using parameterized Cypher queries.
-- **Idempotent Synthetic Seeding**: Deterministic operational scenario containing 11 services, 4 teams, 10 deployments, 4 incidents, and 12 evidence records spanning multi-hop dependency chains.
+- **Idempotent Synthetic Seeding**: Deterministic operational scenario containing 11 services, 4 teams, 10 deployments, 4 incidents, 6 source provenance records, and 28 evidence records spanning multi-hop dependency chains.
 - **The 9-Step Investigation Engine**: Validates inputs, traverses upstream and downstream topologies, normalizes and deduplicates evidence, evaluates candidate and competing hypotheses, and derives non-destructive diagnostic next steps.
 - **Mandatory Graph Indispensability Test (Gate D)**: Proves that resolving the primary incident (`INC-2026-101`) strictly requires traversing 3 relationship hops in FalkorDB:
   ```
   (INC-2026-101)-[:AFFECTS]->(checkout-service)-[:DEPENDS_ON]->(auth-service)-[:HAS_DEPLOYMENT]->(dep-auth-2.4.1)
   ```
-  When the FalkorDB graph is removed or empty, the system strictly refuses to fabricate an answer.
+  - **Empty Graph Phase**: System strictly refuses to fabricate an answer when the database is empty.
+  - **Severed Topology Phase**: When all nodes exist but the `[:DEPENDS_ON]` edge between services is severed, the engine mathematically cannot infer the upstream cause, returning `insufficient-evidence`.
 - **Investigation Persistence in FalkorDB**: Every completed investigation is persisted as an `(:Investigation)` node with edges to evaluated `(:Hypothesis)` nodes and supporting evidence.
 - **Full REST API v1**: Endpoints for service health (`/health`), graph readiness (`/graph/health`), incident subgraphs (`/incidents/:id/subgraph`), and investigations (`/investigations`).
 - **Production-Minded Dark UI (Next.js 14 App Router)**:
@@ -107,12 +108,12 @@ pnpm dev
 ```bash
 pnpm test
 ```
-Executes all 26 unit, integration, and API tests via Vitest:
+Executes all 41 unit, integration, and API tests via Vitest:
 - `tests/unit/contracts.test.ts`: Zod schema validation
-- `tests/unit/evidence-utils.test.ts`: Chronological sorting, deduplication, contradiction detection
-- `tests/unit/hypothesis-rules.test.ts`: Deterministic causal rules evaluation
+- `tests/unit/evidence-utils.test.ts`: Chronological sorting, deduplication, temporal window filtering, contradiction detection
+- `tests/unit/hypothesis-rules.test.ts`: Dynamic topological hypothesis evaluation, datastore contradiction rules, external dependency failures
 - `tests/integration/graph-repository.test.ts`: Real FalkorDB multi-hop queries, deployments, and subgraph extraction
-- `tests/integration/indispensability.test.ts`: Mandatory Gate D Graph Indispensability test
+- `tests/integration/indispensability.test.ts`: Mandatory Gate D Graph Indispensability test (Full graph, Empty graph, and Severed topology)
 - `tests/integration/api.test.ts`: End-to-end REST API endpoint validation
 
 ### Run the Mandatory Graph Indispensability Test
@@ -123,6 +124,11 @@ pnpm test:indispensability
 ### Run Automated Smoke Test
 ```bash
 pnpm smoke
+```
+
+### Run Performance & Latency Benchmark
+```bash
+pnpm bench
 ```
 
 ---

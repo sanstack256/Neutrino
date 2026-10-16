@@ -88,6 +88,17 @@ Represents an executed investigation run.
   - `recommendedNextStep` (String): Non-destructive diagnostic action
   - `rawResult` (JSON String): Full serialized investigation result bundle
 
+### `SourceRecord`
+Represents the provenance origin of an evidence telemetry record in an upstream system.
+- **Properties**:
+  - `id` (String, Indexed): Source system ID (e.g., `src-apm-datadog`, `src-k8s-logs`)
+  - `sourceType` (String): Source category (`apm`, `alertmanager`, `k8s-logs`, `github-releases`, `postmortem-archive`, `external-status`)
+  - `externalId` (String): External provider identifier
+  - `uri` (String, Optional): External source URL or dashboard reference
+  - `observedAt` (ISO 8601 UTC Timestamp)
+  - `contentHash` (String)
+  - `synthetic` (Boolean): Identifies record as synthetic demonstration data
+
 ---
 
 ## 3. Implemented Relationship Types
@@ -99,6 +110,7 @@ Represents an executed investigation run.
 | `AFFECTS` | `Incident` | `Service` | Source incident degrades or disrupts target service |
 | `OWNED_BY` | `Service` | `Team` | Target team is responsible for source service |
 | `OBSERVED_IN` | `Evidence` | `Incident` | Source evidence was captured during target incident |
+| `REFERENCES` | `Evidence` | `SourceRecord` | Source evidence links directly to its provenance origin record |
 | `SUPPORTED_BY` | `Hypothesis` | `Evidence` | Source hypothesis is corroborated by target evidence |
 | `CONTRADICTED_BY`| `Hypothesis` | `Evidence` | Source hypothesis is disproven by target evidence |
 | `INVESTIGATED_IN` | `Incident` | `Investigation`| Target investigation investigated source incident |
@@ -117,6 +129,7 @@ CREATE INDEX FOR (e:Evidence) ON (e.id);
 CREATE INDEX FOR (t:Team) ON (t.id);
 CREATE INDEX FOR (h:Hypothesis) ON (h.id);
 CREATE INDEX FOR (inv:Investigation) ON (inv.id);
+CREATE INDEX FOR (src:SourceRecord) ON (src.id);
 ```
 All seed mutations use Cypher `MERGE` statements on primary `id` attributes, guaranteeing idempotent execution without duplicate node or relationship creation.
 
