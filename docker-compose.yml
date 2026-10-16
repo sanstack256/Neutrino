@@ -1,0 +1,26 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: neutrino-falkordb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - neutrino_falkordb_data:/var/lib/falkordb/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    networks:
+      - neutrino-net
+
+volumes:
+  neutrino_falkordb_data:
+    name: neutrino_falkordb_data
+
+networks:
+  neutrino-net:
+    name: neutrino-net
+    driver: bridge

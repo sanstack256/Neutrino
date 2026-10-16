@@ -1,0 +1,27 @@
+{
+  "name": "neutrino-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Neutrino: Graph-Native AI Investigation Platform powered by FalkorDB",
+  "scripts": {
+    "dev": "concurrently -n \"api,web\" -c \"blue,magenta\" \"pnpm run dev:api\" \"pnpm run dev:web\"",
+    "dev:api": "pnpm --filter @neutrino/api dev",
+    "dev:web": "pnpm --filter @neutrino/web dev",
+    "build": "pnpm --filter @neutrino/contracts build && pnpm --filter @neutrino/api build && pnpm --filter @neutrino/web build",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:indispensability": "vitest run tests/integration/indispensability.test.ts",
+    "seed": "pnpm --filter @neutrino/api seed",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:status": "docker compose ps",
+    "typecheck": "pnpm --filter \"@neutrino/*\" typecheck",
+    "smoke": "bash scripts/smoke-test.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
