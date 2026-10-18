@@ -20,14 +20,14 @@
 | Requirement (Rule 10) | Verified Submission Asset | Location / Evidence |
 |---|---|---|
 | **1. Public Source Repository** | GitHub Public Repository | [https://github.com/sanstack256/Neutrino](https://github.com/sanstack256/Neutrino) |
-| **2. Tracks Entered** | Primary: Track 01 (*Agents That Act on Connected Data*)<br>Track 02 (*Agent Memory and Coordination*)<br>Track 03 (*Company Brain*) | Stated above & detailed in [Section 14](#14-graph-hacks-track-alignment) |
+| **2. Tracks Entered** | Primary: Track 01 (*Agents That Act on Connected Data*)<br>Track 02 (*Agent Memory and Coordination*)<br>Track 03 (*Company Brain*) | Stated above & detailed in [Section 17](#17-graph-hacks-track-alignment) |
 | **3. Live Deployment** | Full Interactive Web UI + Production API hosted on Render | [https://neutrino-api-tzkg.onrender.com](https://neutrino-api-tzkg.onrender.com) |
 | **4. FalkorDB Integration** | FalkorDB Cloud (AWS `ap-south-1`) with TLS + Local Docker Compose | Live Cluster Status: [`/api/v1/graph/health`](https://neutrino-api-tzkg.onrender.com/api/v1/graph/health) |
-| **5. Graph Data Model** | 14 Node Labels, 20 Relationship Types, Schema Visualizer | [Section 4](#4-graph-data-model--schema) & [`docs/graph-model.md`](docs/graph-model.md) |
-| **6. Cypher Queries & Algorithms** | Multi-hop dependency traversal, centrality, memory recall | [Section 5](#5-core-cypher-queries-and-graph-algorithms) & [`docs/cypher-algorithms.md`](docs/cypher-algorithms.md) |
-| **7. Demo Video & Walkthrough** | 3–5 minute step-by-step judge demonstration script | [Section 12](#12-judge-demonstration-script--video-walkthrough) & [`docs/demo-script.md`](docs/demo-script.md) |
-| **8. Local Setup Instructions** | Complete offline setup with Docker Compose & Cloud options | [Section 9](#9-quick-start--local-setup) |
-| **9. AI Assistance Disclosure** | Disclosed in full accordance with Rule 11 | [Section 13](#13-ai-assisted-development-disclosure) |
+| **5. Graph Data Model** | 14 Node Labels, 20 Relationship Types, Schema Visualizer | [Section 6](#6-graph-data-model--schema) & [`docs/graph-model.md`](docs/graph-model.md) |
+| **6. Cypher Queries & Algorithms** | Multi-hop dependency traversal, centrality, memory recall | [Section 7](#7-core-cypher-queries-and-graph-algorithms) & [`docs/cypher-algorithms.md`](docs/cypher-algorithms.md) |
+| **7. Judge Testing Guide & Demo** | 3–5 minute step-by-step judge demonstration guide | [Section 2](#2-️-judge-evaluation--quick-testing-guide-3-minute-walkthrough) & [`docs/demo-script.md`](docs/demo-script.md) |
+| **8. Local Setup Instructions** | Complete offline setup with Docker Compose & Cloud options | [Section 11](#11-quick-start--local-setup) |
+| **9. AI Assistance Disclosure** | Disclosed in full accordance with Rule 11 | [Section 16](#16-ai-assisted-development-disclosure) |
 | **10. Graph Indispensability Proof** | Automated tests proving severed graph edges alter conclusions | `pnpm test:indispensability` (Gate D/E) |
 
 ---
@@ -45,7 +45,67 @@
 
 ---
 
-## 2. What is Neutrino?
+## 2. ⚖️ Judge Evaluation & Quick-Testing Guide (3-Minute Walkthrough)
+
+Judges can evaluate Neutrino either **directly in the browser via the live deployment** (zero installation required) or **locally via the terminal**:
+
+### Option A: Test Live Deployment (Recommended — Instant Browser Testing)
+
+1. **Launch the Web Platform**:
+   - Open **[https://neutrino-api-tzkg.onrender.com](https://neutrino-api-tzkg.onrender.com)**.
+   - Look at the top breadcrumb header: notice the real-time **FalkorDB cluster health capsule** showing live ping latency (<1ms), node count (2,300+ nodes), edge count (4,200+ edges), and active TLS encryption in AWS `ap-south-1`.
+
+2. **Trigger a Graph-Native Investigation (Track 01 Core)**:
+   - Click **Incidents** in the sidebar.
+   - Select **`INC-2026-101`** (*Elevated 500 error rate in checkout flow*).
+   - Click the cyan button: **"Run Graph Investigation"**.
+   - **Observe Connected-Data Discovery**:
+     - The split-canvas interactive **GraphVisualizer** renders the exact multi-hop causal trail in FalkorDB:  
+       `checkout-service` → `[:DEPENDS_ON]` → `auth-service` → `[:HAS_DEPLOYMENT]` → `v2.4.1 (Reduced signing key cache TTL)`.
+     - In the **Ranked Hypotheses Matrix**, observe how candidate causes are deterministically categorized into `Supported`, `Contradicted`, and `Missing Telemetry` (honest refusal without ungrounded hallucinations).
+
+3. **Verify Persistent Cognitive Memory (Track 02 & Track 03)**:
+   - In the investigation result or by navigating to **Memories** in the sidebar, observe how prior postmortems from previous quarters (`INC-2025-089`) are recalled from FalkorDB via `[:GROUNDED_IN]` and `[:ABOUT_SERVICE]` edges.
+   - Memories survive restarts and correlate historical precedents with current evidence.
+
+4. **Test Safe Remediation & Two-Person Approval Boundary**:
+   - Navigate to **Remediations & Actions** in the sidebar.
+   - Inspect the proposed action (*jwks_sync* or *cache_flush*).
+   - **Test Proposer Isolation**: Click "Approve" with the proposing engineer identity—notice the system strictly blocks self-approval.
+   - Switch to an independent peer reviewer, grant approval, execute the allowlisted handler, and watch the system automatically query live FalkorDB telemetry within 60s to verify resolution.
+
+5. **Test Multi-Tenancy Isolation & Audit Trail**:
+   - Switch between `tenant-default` and `tenant-beta` using the tenant namespace selector.
+   - Verify that cross-tenant queries strictly return 404 (zero data leakage).
+   - Navigate to **Audit & Security** to view the immutable FalkorDB audit record stream.
+
+---
+
+### Option B: Test Locally from Source (Under 2 Minutes)
+
+```bash
+# 1. Clone & install dependencies:
+git clone https://github.com/sanstack256/Neutrino.git
+cd Neutrino
+pnpm install
+pnpm build
+
+# 2. Run unit and reasoning tests (23 suites, 134 tests):
+pnpm test:unit
+
+# 3. Run mandatory FalkorDB indispensability proof (Gate D/E):
+# (Proves that severing graph edges prevents finding root causes and causes honest refusal)
+pnpm test:indispensability
+
+# 4. Start local development servers:
+pnpm dev
+# Web UI: http://localhost:3001
+# API Server: http://localhost:4000
+```
+
+---
+
+## 3. What is Neutrino?
 
 **Neutrino** is an operational investigation platform that empowers engineering and site reliability teams to reconstruct complex distributed system failures, correlate operational evidence across topology boundaries, discover probable causes through connected data, recall persistent organizational memory across quarters, and execute safe, approval-gated remediations using **FalkorDB** as its persistent cognitive graph database.
 
@@ -55,7 +115,7 @@ Neutrino models the enterprise operational topology directly in FalkorDB—conne
 
 ---
 
-## 3. UI/UX: Modern Developer Investigation Platform
+## 4. UI/UX: Modern Developer Investigation Platform
 
 Neutrino features a refined developer interface inspired by **Linear** and **Sentry**, built for high-density operational workflows:
 
@@ -75,7 +135,7 @@ Neutrino features a refined developer interface inspired by **Linear** and **Sen
 
 ---
 
-## 4. Why FalkorDB is Indispensable
+## 5. Why FalkorDB is Indispensable
 
 Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
@@ -87,7 +147,7 @@ Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
 ---
 
-## 5. Graph Data Model & Schema
+## 6. Graph Data Model & Schema
 
 Neutrino models the enterprise operational topology, real-time evidence, persistent memory, and safe actions directly in **FalkorDB** across 14 node labels and 20 relationship types.
 
@@ -135,7 +195,7 @@ graph TD
 
 ---
 
-## 6. Core Cypher Queries and Graph Algorithms
+## 7. Core Cypher Queries and Graph Algorithms
 
 The Neutrino investigation and memory engine depends centrally on these representative Cypher queries executed directly in FalkorDB:
 
@@ -178,7 +238,7 @@ LIMIT $limit
 
 ---
 
-## 7. Core Architecture & System Pipeline
+## 8. Core Architecture & System Pipeline
 
 ```
                                  NEUTRINO PIPELINE
@@ -228,7 +288,7 @@ LIMIT $limit
 
 ---
 
-## 8. Key Hardened Features (Stage 5 Deliverable)
+## 9. Key Hardened Features (Stage 5 Deliverable)
 
 ### A. Cryptographic Security & Multi-Tenant Boundary
 - **Production Fail-Closed Auth**: In `NODE_ENV=production`, unauthenticated requests are rejected (401), invalid/forged HMAC-SHA256 signatures are rejected (401), and the server fails closed if `JWT_SECRET` is missing.
@@ -250,7 +310,7 @@ LIMIT $limit
 
 ---
 
-## 9. Technology Stack
+## 10. Technology Stack
 
 - **Graph Database**: FalkorDB Cloud (AWS `ap-south-1`, official `falkordb` Node.js client with TLS)
 - **Backend API**: Node.js v20+, Express, TypeScript (strict mode), Zod contracts, Redis client
@@ -260,7 +320,7 @@ LIMIT $limit
 
 ---
 
-## 10. Quick Start & Local Setup
+## 11. Quick Start & Local Setup
 
 ### Prerequisites
 - Node.js v20+
@@ -302,7 +362,7 @@ pnpm dev
 
 ---
 
-## 11. Performance Benchmark Results
+## 12. Performance Benchmark Results
 
 Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and **4,245 relationships**) over 20 iterations:
 
@@ -321,7 +381,7 @@ Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and 
 
 ---
 
-## 12. Test Suite Summary (134 Passed / 0 Failed across 23 Suites)
+## 13. Test Suite Summary (134 Passed / 0 Failed across 23 Suites)
 
 | Category | Suite File | Tests | Focus Area |
 |---|---|---|---|
@@ -351,7 +411,7 @@ Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and 
 
 ---
 
-## 13. Judge Demonstration Script & Video Walkthrough
+## 14. Judge Demonstration Script & Video Walkthrough
 
 A complete, 3–5 minute step-by-step presentation script designed specifically for hackathon evaluation is available at:
 👉 **[docs/demo-script.md](docs/demo-script.md)**
@@ -368,7 +428,7 @@ A complete, 3–5 minute step-by-step presentation script designed specifically 
 
 ---
 
-## 14. Hackathon Documentation Index
+## 15. Hackathon Documentation Index
 
 - **Graph Data Model**: [docs/graph-model.md](docs/graph-model.md) — Node labels, relationship semantics, properties, and schema diagram.
 - **Cypher & Graph Algorithms**: [docs/cypher-algorithms.md](docs/cypher-algorithms.md) — Representative production Cypher queries and graph algorithms.
@@ -378,7 +438,7 @@ A complete, 3–5 minute step-by-step presentation script designed specifically 
 
 ---
 
-## 15. AI-Assisted Development Disclosure
+## 16. AI-Assisted Development Disclosure
 
 In accordance with Graph Hacks competition guidelines:
 - **Architecture, Graph Modeling & Engineering Design**: Developed by the project team.
@@ -387,7 +447,7 @@ In accordance with Graph Hacks competition guidelines:
 
 ---
 
-## 16. Graph Hacks Track Alignment
+## 17. Graph Hacks Track Alignment
 
 | Track | Alignment in Neutrino |
 |---|---|
