@@ -41,11 +41,35 @@ export function createApp() {
   // Logging & correlation IDs
   app.use(requestLogger);
 
+  // Root diagnostic & cloud probe routes
+  app.get('/', (req, res) => {
+    res.json({
+      service: 'Neutrino API',
+      status: 'healthy',
+      version: '0.1.0',
+      timestamp: new Date().toISOString(),
+      database: {
+        graph: config.FALKORDB_GRAPH_NAME,
+        host: config.FALKORDB_HOST,
+      },
+      endpoints: {
+        health: '/api/v1/health',
+        graphHealth: '/api/v1/graph/health',
+        incidents: '/api/v1/incidents',
+      },
+    });
+  });
+
+  app.get('/healthz', (req, res) => res.status(200).send('OK'));
+  app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+  // Mount unauthenticated health routes
+  app.use('/api/v1', healthRoutes);
+
   // Tenant Authentication & Request Context Boundary
   app.use(tenantAuthMiddleware);
 
-  // Mount API v1 routes
-  app.use('/api/v1', healthRoutes);
+  // Mount authenticated business routes
   app.use('/api/v1/incidents', incidentRoutes);
   app.use('/api/v1/investigations', investigationRoutes);
   app.use('/api/v1/memories', memoryRoutes);

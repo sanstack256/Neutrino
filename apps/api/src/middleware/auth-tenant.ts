@@ -85,6 +85,24 @@ export function tenantAuthMiddleware(req: AuthenticatedRequest, res: Response, n
   const correlationId = req.correlationId || `req-${Date.now()}`;
   const isProduction = config.NODE_ENV === 'production';
 
+  // Public health and probe endpoints bypass tenant authentication
+  const path = req.path || '';
+  if (
+    path === '/' ||
+    path === '/healthz' ||
+    path === '/favicon.ico' ||
+    path.startsWith('/health') ||
+    path.startsWith('/api/v1/health') ||
+    path.startsWith('/api/v1/graph/health')
+  ) {
+    req.tenantContext = {
+      tenantId: DEFAULT_TENANT_ID,
+      principalId: 'probe',
+      roles: ['operator'],
+    };
+    return next();
+  }
+
   // Read provided headers
   const headerTenantId = req.headers['x-tenant-id'] as string | undefined;
   const headerPrincipalId = req.headers['x-principal-id'] as string | undefined;
