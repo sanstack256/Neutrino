@@ -99,6 +99,8 @@ export function tenantAuthMiddleware(req: AuthenticatedRequest, res: Response, n
       tenantId: DEFAULT_TENANT_ID,
       principalId: 'probe',
       roles: ['operator'],
+      correlationId,
+      isSharedAccessAuthorized: false,
     };
     return next();
   }
