@@ -4,6 +4,7 @@ node_modules/
 
 # Build artifacts
 dist/
+!packages/contracts/dist/
 build/
 .next/
 out/
