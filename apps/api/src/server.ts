@@ -102,6 +102,13 @@ if (process.env.NODE_ENV !== 'test') {
     });
   };
 
+  process.on('uncaughtException', (err) => {
+    console.error('[Process Error] Uncaught exception caught safely:', err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[Process Error] Unhandled rejection caught safely:', reason);
+  });
+
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }

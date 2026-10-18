@@ -39,26 +39,33 @@ export class FalkorDBManager {
 
   public async getClient(): Promise<any> {
     if (!this.client) {
-      if (config.FALKORDB_URL) {
-        this.client = await FalkorDB.connect({ url: config.FALKORDB_URL });
-      } else {
-        const connectOpts: any = {
-          host: this.host,
-          port: this.port,
-        };
-        if (this.username) connectOpts.username = this.username;
-        if (this.password) connectOpts.password = this.password;
+      const socketOpts: any = {
+        host: this.host,
+        port: this.port,
+        keepAlive: 5000,
+        reconnectStrategy: (retries: number) => Math.min(retries * 150, 3000),
+      };
 
-        if (config.FALKORDB_TLS) {
-          connectOpts.socket = {
-            host: this.host,
-            port: this.port,
-            tls: true,
-          };
-        }
-
-        this.client = await FalkorDB.connect(connectOpts);
+      if (config.FALKORDB_TLS) {
+        socketOpts.tls = true;
       }
+
+      const connectOpts: any = {
+        username: this.username || undefined,
+        password: this.password || undefined,
+        socket: socketOpts,
+      };
+
+      if (config.FALKORDB_URL) {
+        connectOpts.url = config.FALKORDB_URL;
+      }
+
+      this.client = await FalkorDB.connect(connectOpts);
+
+      // Handle socket errors on EventEmitter so idle timeouts do not crash the Node.js process
+      this.client.on('error', (err: any) => {
+        console.warn(`[FalkorDB Warning] Socket error (reconnecting): ${err?.message || err}`);
+      });
     }
     return this.client;
   }
