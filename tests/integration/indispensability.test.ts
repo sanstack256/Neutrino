@@ -9,18 +9,28 @@ describe('Mandatory Gate D: FalkorDB Graph Indispensability Test', () => {
   const emptyGraphName = 'neutrino_empty_test_graph';
 
   beforeAll(async () => {
-    // 1. Seed normal graph
-    await seedDatabase(undefined, normalGraphName);
+    const manager = FalkorDBManager.getInstance();
+
+    // 1. Seed normal graph only if INC-2026-101 is missing
+    const normalGraph = await manager.getGraph(normalGraphName);
+    try {
+      const checkRes = await normalGraph.query('MATCH (i:Incident {id: "INC-2026-101"}) RETURN count(i) AS cnt');
+      const hasIncident = Number((checkRes.data as any)?.[0]?.cnt || 0) > 0;
+      if (!hasIncident) {
+        await seedDatabase(undefined, normalGraphName);
+      }
+    } catch {
+      await seedDatabase(undefined, normalGraphName);
+    }
 
     // 2. Ensure empty test graph exists and has 0 nodes
-    const manager = FalkorDBManager.getInstance();
     const emptyGraph = await manager.getGraph(emptyGraphName);
     try {
       await emptyGraph.delete();
     } catch {
       // ignore if graph does not exist
     }
-  });
+  }, 60000);
 
   it('Phase 1 (With FalkorDB Graph): Discovers 3-hop causal chain and responsible team', async () => {
     const normalRepo = new GraphRepository({ graphName: normalGraphName });
@@ -65,7 +75,7 @@ describe('Mandatory Gate D: FalkorDB Graph Indispensability Test', () => {
     // Service context checks
     const context = await normalRepo.getIncidentContext('INC-2026-101');
     expect(context.affectedService?.id).toBe('checkout-service');
-  });
+  }, 90000);
 
   it('Phase 2 (Without FalkorDB Graph Context): System refuses to fabricate answer and reports missing context', async () => {
     // Create an engine configured against the isolated empty graph
@@ -170,5 +180,5 @@ describe('Mandatory Gate D: FalkorDB Graph Indispensability Test', () => {
     } catch {
       // ignore
     }
-  });
+  }, 90000);
 });

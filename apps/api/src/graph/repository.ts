@@ -293,7 +293,7 @@ export class GraphRepository {
     const nFilter = this.tenantFilter('n', tenantId);
 
     const cypher = `
-      MATCH p = (consumer:Service)-[:DEPENDS_ON*1..${safeDepth}]->(target:Service {id: $svcId})
+      MATCH p = (target:Service {id: $svcId})<-[:DEPENDS_ON*1..${safeDepth}]-(consumer:Service)
       WHERE ALL(n IN nodes(p) WHERE ${nFilter})
       RETURN consumer, length(p) AS depth, [n IN nodes(p) | n.id] AS pathNodes
       ORDER BY depth ASC
@@ -400,9 +400,8 @@ export class GraphRepository {
     const nFilter = this.tenantFilter('n', tenantId);
 
     const cypher = `
-      MATCH p = (start {id: $startId})-[r*1..${safeDepth}]-(target {id: $endId})
-      WHERE ALL(rel IN relationships(p) WHERE type(rel) IN ['AFFECTS', 'DEPENDS_ON', 'HAS_DEPLOYMENT', 'RELATED_TO'])
-        AND ALL(n IN nodes(p) WHERE ${nFilter})
+      MATCH p = (start {id: $startId})-[:AFFECTS|DEPENDS_ON|HAS_DEPLOYMENT|RELATED_TO*1..${safeDepth}]->(target {id: $endId})
+      WHERE ALL(n IN nodes(p) WHERE ${nFilter})
       RETURN p,
              [n IN nodes(p) | coalesce(n.id, id(n))] AS nodeIds,
              [rel IN relationships(p) | type(rel)] AS relTypes
