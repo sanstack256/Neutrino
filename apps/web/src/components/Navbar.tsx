@@ -14,13 +14,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
     <header className="border-b border-neutrino-800 bg-neutrino-900/90 backdrop-blur sticky top-0 z-50 px-6 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand */}
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('overview')}>
-          <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center shadow-md shadow-cyan-950/40">
-            <GitGraph className="w-5 h-5 text-white" />
+        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => setActiveTab('overview')}>
+          <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center border border-neutrino-700/80 bg-neutrino-950 shadow-sm group-hover:border-cyan-500/50 transition-colors">
+            <img src="/logo.png" alt="Neutrino Logo" className="w-full h-full object-contain p-0.5" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-base text-slate-100 tracking-tight">NEUTRINO</span>
+              <span className="font-bold text-base text-slate-100 tracking-tight group-hover:text-cyan-300 transition-colors">NEUTRINO</span>
               <span className="text-[10px] font-mono uppercase bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.5 rounded font-medium">
                 Stage 5 Final
               </span>
