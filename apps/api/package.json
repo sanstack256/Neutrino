@@ -5,7 +5,7 @@
   "main": "./dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "pnpm --filter @neutrino/contracts build && tsc",
+    "build": "pnpm --filter @neutrino/contracts build && pnpm --filter @neutrino/web build && tsc",
     "start": "node dist/server.js",
     "seed": "tsx src/seed.ts",
     "typecheck": "tsc --noEmit"

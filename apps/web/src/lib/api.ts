@@ -11,7 +11,18 @@ import {
   EventProcessingStatus,
 } from '@neutrino/contracts';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const getApiBase = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' && window.location.port === '3001') {
+      return 'http://localhost:4000/api/v1';
+    }
+    return '/api/v1';
+  }
+  return 'http://localhost:4000/api/v1';
+};
 
 let currentTenantId = 'tenant-default';
 
@@ -22,7 +33,7 @@ export const setTenantId = (id: string) => {
 export const getTenantId = () => currentTenantId;
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${getApiBase()}${endpoint}`;
   try {
     const res = await fetch(url, {
       ...options,

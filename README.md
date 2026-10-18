@@ -3,11 +3,29 @@
 > **Competition**: Graph Hacks — Context for AI Agents, powered by FalkorDB  
 > **Primary Track**: Track 01 — *Agents That Act on Connected Data*  
 > **Additional Tracks**: Track 02 — *Agent Memory and Coordination*; Track 03 — *Company Brain*  
-> **Status**: Stage 5 Finished Deliverable — Fully hardened, locally runnable, tested (134/134 passing), and verified against FalkorDB.
+> **Status**: Stage 5 Finished Deliverable — Fully hardened, tested, and live on FalkorDB Cloud.
+
+[![Live Application](https://img.shields.io/badge/Live_Deployment-Render-06b6d4?style=flat&logo=render)](https://neutrino-api-tzkg.onrender.com)
+[![FalkorDB Cloud](https://img.shields.io/badge/FalkorDB_Cloud-AWS_ap--south--1-10b981?style=flat)](https://neutrino-api-tzkg.onrender.com/api/v1/graph/health)
+[![Tests Passing](https://img.shields.io/badge/Tests-134%20Passing-emerald?style=flat)]()
+[![License](https://img.shields.io/badge/License-MIT-slate?style=flat)]()
 
 ---
 
-## 1. What is Neutrino?
+## 1. Live Deployment & Endpoints
+
+| Resource | Environment | URL / Host | Description |
+|---|---|---|---|
+| **Interactive Web UI** | Production (Render) | [https://neutrino-api-tzkg.onrender.com](https://neutrino-api-tzkg.onrender.com) | Full Linear & Sentry-inspired investigation platform |
+| **Graph Health API** | Production (Render) | [https://neutrino-api-tzkg.onrender.com/api/v1/graph/health](https://neutrino-api-tzkg.onrender.com/api/v1/graph/health) | Live FalkorDB cluster connectivity & topology status |
+| **API Root** | Production (Render) | [https://neutrino-api-tzkg.onrender.com/api/v1/health](https://neutrino-api-tzkg.onrender.com/api/v1/health) | Production health & readiness probes |
+| **FalkorDB Cloud** | AWS `ap-south-1` | `r-6jissuruar.instance-aul14suj0...cloud:60855` | Dedicated cloud graph instance (`neutrino_graph`) with TLS |
+| **Local Web UI** | Development | `http://localhost:3001` | Next.js 14 App Router development server |
+| **Local API Server** | Development | `http://localhost:4000` | Express TypeScript backend & static web server |
+
+---
+
+## 2. What is Neutrino?
 
 **Neutrino** is an operational investigation platform that empowers engineering and site reliability teams to reconstruct complex distributed system failures, correlate operational evidence across topology boundaries, discover probable causes through connected data, recall persistent organizational memory across quarters, and execute safe, approval-gated remediations using **FalkorDB** as its persistent cognitive graph database.
 
@@ -17,7 +35,27 @@ Neutrino models the enterprise operational topology directly in FalkorDB—conne
 
 ---
 
-## 2. Why FalkorDB is Indispensable
+## 3. UI/UX: Modern Developer Investigation Platform
+
+Neutrino features a refined developer interface inspired by **Linear** and **Sentry**, built for high-density operational workflows:
+
+- **Compact Navigation Sidebar**: 240px collapsible developer sidebar with the metallic 3D **N** emblem, live `falkordb · online` pulse indicator, `⌘K` launcher, and functional sections (*Operations*, *Graph Intelligence*, *Platform & Safety*).
+- **Breadcrumb Header Bar**: Real-time cluster status capsule showing ping latency, node/edge counts, TLS active verification, and tenant namespace selector.
+- **Spacious Investigation Workspace**:
+  - **Embedded Subgraph Canvas**: Directly integrates the interactive `GraphVisualizer` alongside the evidence timeline so developers don't have to switch tabs.
+  - **Split View Switcher**: Toggle between `Split Canvas` (Graph + Evidence), `Evidence Only`, and `Graph Focused`.
+  - **Multi-Hop Traversal Highlighting**: Electric cyan glowing causal trail rendered across the actual FalkorDB subgraph.
+  - **Ranked Hypotheses Matrix**: Formally categorized into `Supported`, `Contradicted`, and `Missing Telemetry` (refusing ungrounded hallucinations).
+  - **Memory Grounding**: Real-time corroboration and contradiction badges against persistent FalkorDB memory claims.
+- **Sentry-Style Incident Cockpit**: Filterable list with severity tags (`SEV-1`, `SEV-2`, `SEV-3`), service ownership cards, correlated deployments, and 1-click investigation dispatch.
+- **Persistent Graph Memories Inspector**: Filter semantic claims, diagnostic procedures, and historical episodes with confidence scores and grounded graph provenance.
+- **Real-Time Telemetry Stream**: Structured telemetry events with automated sanitization, deduplication, and manual injection workbench.
+- **Safety & Remediation Approval Boundary**: Two-person rule governance, risk level classification, allowlisted handler execution, and postcondition verification.
+- **Audit & Reliability Cockpit**: Multi-tenant isolation testing, production readiness probes, retention lifecycle pruning with dry-run mode, and immutable audit logs.
+
+---
+
+## 4. Why FalkorDB is Indispensable
 
 Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
@@ -29,7 +67,7 @@ Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
 ---
 
-## 3. Core Architecture & System Pipeline
+## 5. Core Architecture & System Pipeline
 
 ```
                                  NEUTRINO PIPELINE
@@ -79,7 +117,7 @@ Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
 ---
 
-## 4. Key Hardened Features (Stage 5 Deliverable)
+## 6. Key Hardened Features (Stage 5 Deliverable)
 
 ### A. Cryptographic Security & Multi-Tenant Boundary
 - **Production Fail-Closed Auth**: In `NODE_ENV=production`, unauthenticated requests are rejected (401), invalid/forged HMAC-SHA256 signatures are rejected (401), and the server fails closed if `JWT_SECRET` is missing.
@@ -101,9 +139,9 @@ Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
 ---
 
-## 5. Technology Stack
+## 7. Technology Stack
 
-- **Graph Database**: FalkorDB (`falkordb/falkordb:latest` via Docker, official `falkordb` Node.js client)
+- **Graph Database**: FalkorDB Cloud (AWS `ap-south-1`, official `falkordb` Node.js client with TLS)
 - **Backend API**: Node.js v20+, Express, TypeScript (strict mode), Zod contracts, Redis client
 - **Frontend UI**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide icons
 - **Monorepo Management**: pnpm v11 workspaces (`@neutrino/contracts`, `@neutrino/api`, `@neutrino/web`)
@@ -111,60 +149,49 @@ Neutrino is built fundamentally around FalkorDB as its primary graph database:
 
 ---
 
-## 6. Quick Start & Local Setup (Copyable Commands)
+## 8. Quick Start & Local Setup
 
 ### Prerequisites
-- Docker & Docker Compose
 - Node.js v20+
 - pnpm (`npm install -g pnpm`)
+- Docker & Docker Compose (optional for local FalkorDB, or connect to FalkorDB Cloud)
 
-### Step 1: Start FalkorDB
-```bash
-docker compose up -d
-# Or directly via docker run:
-# docker run -d --name neutrino-falkordb -p 6379:6379 falkordb/falkordb:latest
-```
-
-### Step 2: Install Dependencies & Build Workspace
+### Step 1: Install Dependencies & Build Workspace
 ```bash
 pnpm install
 pnpm build
 ```
 
-### Step 3: Seed Synthetic Operational Topology
+### Step 2: Configure Environment (.env)
 ```bash
-pnpm seed
+# Connect to local FalkorDB or FalkorDB Cloud instance:
+FALKORDB_HOST=r-6jissuruar.instance-aul14suj0.hc-7up0crkyn.ap-south-1.aws.f2e0a955bb84.cloud
+FALKORDB_PORT=60855
+FALKORDB_USERNAME=falkordb
+FALKORDB_PASSWORD=san75515424
+FALKORDB_GRAPH_NAME=neutrino_graph
+FALKORDB_TLS=true
 ```
 
-### Step 4: Run Automated Verification Tests (134 Tests / 23 Suites)
+### Step 3: Run Automated Verification Tests
 ```bash
-# Run complete test suite:
-pnpm test
+# Run unit tests:
+pnpm test:unit
 
-# Run Stage 5 security hardening & E2E acceptance suites:
-pnpm vitest run tests/integration/stage5-security-hardening.test.ts
-pnpm vitest run tests/integration/stage5-e2e-acceptance.test.ts
+# Run mandatory FalkorDB indispensability test:
+pnpm test:indispensability
 ```
 
-### Step 5: Run Benchmark & Performance Audit
+### Step 4: Start Development Servers
 ```bash
-pnpm bench
-```
-
-### Step 6: Run Smoke Test
-```bash
-pnpm smoke
-```
-
-### Step 7: Start the Application
-```bash
-# Starts backend API (http://localhost:4000) and Web UI (http://localhost:3000):
 pnpm dev
+# Web UI: http://localhost:3001
+# API Server: http://localhost:4000
 ```
 
 ---
 
-## 7. Performance Benchmark Results
+## 9. Performance Benchmark Results
 
 Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and **4,245 relationships**) over 20 iterations:
 
@@ -183,7 +210,7 @@ Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and 
 
 ---
 
-## 8. Test Suite Summary (134 Passed / 0 Failed across 23 Suites)
+## 10. Test Suite Summary (134 Passed / 0 Failed across 23 Suites)
 
 | Category | Suite File | Tests | Focus Area |
 |---|---|---|---|
@@ -213,7 +240,7 @@ Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and 
 
 ---
 
-## 9. Hackathon Documentation Index
+## 11. Hackathon Documentation Index
 
 - **Graph Data Model**: [docs/graph-model.md](docs/graph-model.md) — Node labels, relationship semantics, properties, and Mermaid diagram.
 - **Cypher & Graph Algorithms**: [docs/cypher-algorithms.md](docs/cypher-algorithms.md) — Representative production Cypher queries and graph algorithms.
@@ -223,7 +250,7 @@ Measured against live FalkorDB (`neutrino_graph` containing **2,324 nodes** and 
 
 ---
 
-## 10. AI-Assisted Development Disclosure
+## 12. AI-Assisted Development Disclosure
 
 In accordance with Graph Hacks competition guidelines:
 - **Architecture, Graph Modeling & Engineering Design**: Developed by the project team.
@@ -232,7 +259,7 @@ In accordance with Graph Hacks competition guidelines:
 
 ---
 
-## 11. Graph Hacks Track Alignment
+## 13. Graph Hacks Track Alignment
 
 | Track | Alignment in Neutrino |
 |---|---|

@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import { config } from './config/config.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -41,10 +43,28 @@ export function createApp() {
   // Logging & correlation IDs
   app.use(requestLogger);
 
+  // Locate static frontend assets (if built)
+  const candidateWebPaths = [
+    path.resolve(__dirname, '../../web/out'),
+    path.resolve(__dirname, '../../../apps/web/out'),
+    path.resolve(process.cwd(), 'apps/web/out'),
+    path.resolve(process.cwd(), 'out'),
+  ];
+  const webOutDir = candidateWebPaths.find((p) => fs.existsSync(p));
+
+  if (webOutDir) {
+    app.use(express.static(webOutDir));
+  }
+
   // Root diagnostic & cloud probe routes
   app.get('/', (req, res) => {
+    // If request comes from a browser asking for HTML, serve the frontend app
+    if (webOutDir && req.headers.accept?.includes('text/html')) {
+      return res.sendFile(path.join(webOutDir, 'index.html'));
+    }
+
     res.json({
-      service: 'Neutrino API',
+      service: 'Neutrino API & Investigation Platform',
       status: 'healthy',
       version: '0.1.0',
       timestamp: new Date().toISOString(),
@@ -56,12 +76,18 @@ export function createApp() {
         health: '/api/v1/health',
         graphHealth: '/api/v1/graph/health',
         incidents: '/api/v1/incidents',
+        investigations: '/api/v1/investigations',
       },
     });
   });
 
   app.get('/healthz', (req, res) => res.status(200).send('OK'));
-  app.get('/favicon.ico', (req, res) => res.status(204).end());
+  app.get('/favicon.ico', (req, res) => {
+    if (webOutDir && fs.existsSync(path.join(webOutDir, 'favicon.ico'))) {
+      return res.sendFile(path.join(webOutDir, 'favicon.ico'));
+    }
+    res.status(204).end();
+  });
 
   // Mount unauthenticated health routes
   app.use('/api/v1', healthRoutes);
@@ -78,6 +104,16 @@ export function createApp() {
   app.use('/api/v1/intelligence', intelligenceRouter);
   app.use('/api/v1/audit', auditRouter);
   app.use('/api/v1/lifecycle', lifecycleRouter);
+
+  // Fallback for single page app client-side routing
+  if (webOutDir) {
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path === '/healthz') {
+        return next();
+      }
+      res.sendFile(path.join(webOutDir, 'index.html'));
+    });
+  }
 
   // Error handling middleware
   app.use(errorHandler);
