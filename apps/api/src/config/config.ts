@@ -18,7 +18,9 @@ const ConfigSchema = z.object({
   FALKORDB_USERNAME: z.string().optional().default(''),
   FALKORDB_PASSWORD: z.string().optional().default(''),
   FALKORDB_URL: z.string().optional().default(''),
-  FALKORDB_TLS: z.coerce.boolean().default(false),
+  FALKORDB_TLS: z
+    .preprocess((val) => val === true || val === 'true' || val === '1', z.boolean())
+    .default(false),
   FALKORDB_GRAPH_NAME: z.string().default('neutrino_graph'),
   FALKORDB_TEST_GRAPH_NAME: z.string().default('neutrino_test_graph'),
 
