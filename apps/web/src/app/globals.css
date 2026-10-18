@@ -3,21 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #07090e;
-  --bg-secondary: #0c0f17;
-  --bg-surface: #111520;
-  --bg-elevated: #171c2b;
-  --border-subtle: #1e2437;
-  --border-prominent: #272f47;
-  --accent: #6366f1;
-  --accent-light: #818cf8;
+  --bg-primary: #06080d;
+  --bg-secondary: #0b0e17;
+  --bg-surface: #101420;
+  --bg-elevated: #151b2a;
+  --border-subtle: #1c2438;
+  --border-prominent: #242f48;
+  --accent: #0891b2;
+  --accent-light: #22d3ee;
 }
 
 body {
   background-color: var(--bg-primary);
-  color: #f1f5f9;
+  color: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Custom scrollbars */

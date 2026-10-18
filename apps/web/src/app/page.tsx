@@ -16,6 +16,10 @@ import { IncidentsView } from '../components/IncidentsView';
 import { InvestigationResultsView } from '../components/InvestigationResultsView';
 import { GraphVisualizer } from '../components/GraphVisualizer';
 import { HistoryView } from '../components/HistoryView';
+import { MemoryInspectorView } from '../components/MemoryInspectorView';
+import { TelemetryView } from '../components/TelemetryView';
+import { RemediationView } from '../components/RemediationView';
+import { AuditView } from '../components/AuditView';
 import {
   AlertTriangle,
   Server,
@@ -27,10 +31,13 @@ import {
   Sparkles,
   Layers,
   HelpCircle,
+  Brain,
+  Radio,
+  ShieldAlert,
 } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'incidents' | 'investigate' | 'graph' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'incidents' | 'investigate' | 'memories' | 'telemetry' | 'remediation' | 'graph' | 'history' | 'audit'>('overview');
   const [graphHealth, setGraphHealth] = useState<GraphHealthResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [incidents, setIncidents] = useState<IncidentListItem[]>([]);
@@ -165,33 +172,33 @@ export default function Home() {
         {/* VIEW A: OVERVIEW & LAUNCHPAD                                    */}
         {/* ============================================================== */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Hero Banner */}
-            <div className="bg-gradient-to-r from-neutrino-900 via-neutrino-850 to-neutrino-900 border border-neutrino-750 p-8 rounded-2xl relative overflow-hidden shadow-2xl">
-              <div className="max-w-2xl space-y-3 relative z-10">
-                <span className="text-xs font-mono uppercase bg-indigo-950 text-indigo-300 border border-indigo-800/80 px-2.5 py-1 rounded-full">
+            <div className="bg-neutrino-900 border border-neutrino-800 p-6 md:p-8 rounded-xl relative overflow-hidden">
+              <div className="max-w-3xl space-y-3 relative z-10">
+                <span className="inline-block text-[11px] font-mono uppercase bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 px-2.5 py-1 rounded-md">
                   Graph Hacks 2026 — Track 01: Agents That Act on Connected Data
                 </span>
-                <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight">
                   Graph-Native Investigation Platform
                 </h1>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   Neutrino transforms high-severity production incident diagnosis through deep multi-hop relationship
-                  traversal in <span className="text-indigo-400 font-semibold">FalkorDB</span>. Instead of shallow log
+                  traversal in <span className="text-cyan-400 font-semibold">FalkorDB</span>. Instead of shallow log
                   searches, Neutrino traverses service dependencies, deployment events, and telemetry evidence to form
                   traceable, evidence-backed hypotheses.
                 </p>
-                <div className="pt-2 flex items-center space-x-3">
+                <div className="pt-2 flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => setActiveTab('investigate')}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2"
+                    className="h-10 px-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-2"
                   >
                     <Activity className="w-4 h-4" />
                     <span>Open Investigation Workspace</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('incidents')}
-                    className="px-4 py-2 bg-neutrino-800 hover:bg-neutrino-750 border border-neutrino-700 text-slate-200 rounded-lg text-xs font-medium transition-all"
+                    className="h-10 px-4 bg-neutrino-800 hover:bg-neutrino-750 border border-neutrino-700 text-slate-200 rounded-lg text-xs font-medium transition-colors flex items-center"
                   >
                     Browse Operational Incidents
                   </button>
@@ -232,7 +239,7 @@ export default function Home() {
             </div>
 
             {/* Quick Demonstration Launchpad */}
-            <div className="bg-neutrino-850 border border-neutrino-750 p-6 rounded-2xl space-y-4">
+            <div className="bg-neutrino-850 border border-neutrino-750 p-6 rounded-xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-neutrino-800">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
@@ -242,7 +249,7 @@ export default function Home() {
                     Select a connected scenario to witness multi-hop graph reasoning in FalkorDB
                   </p>
                 </div>
-                <span className="text-xs font-mono text-indigo-400 bg-indigo-950/60 border border-indigo-800/80 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/80 px-2 py-0.5 rounded-md">
                   Indispensability Demo
                 </span>
               </div>
@@ -257,22 +264,22 @@ export default function Home() {
                     );
                     setActiveTab('investigate');
                   }}
-                  className="bg-neutrino-900 border border-neutrino-800 hover:border-indigo-500/80 p-5 rounded-xl cursor-pointer transition-all hover:shadow-lg group"
+                  className="bg-neutrino-900 border border-neutrino-800 hover:border-cyan-500/80 p-5 rounded-xl cursor-pointer transition-colors group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-bold text-red-400">INC-2026-101 (SEV-1)</span>
-                    <span className="text-[10px] font-mono uppercase bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.5 rounded">
+                    <span className="font-mono text-xs font-bold text-rose-400">INC-2026-101 (SEV-1)</span>
+                    <span className="text-[10px] font-mono uppercase bg-cyan-950 text-cyan-300 border border-cyan-800/80 px-1.5 py-0.5 rounded-md">
                       3-Hop Chain
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  <h4 className="text-sm font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
                     Checkout Service Elevated 500 Errors
                   </h4>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                     Traverses (Incident) → (checkout-service) → (auth-service) → (dep-auth-2.4.1) to uncover key-rotation
                     cache desync bug and identify team-identity on-call.
                   </p>
-                  <div className="mt-3 text-xs text-indigo-400 font-medium flex items-center space-x-1">
+                  <div className="mt-3 text-xs text-cyan-400 font-medium flex items-center gap-1">
                     <span>Investigate this scenario</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -285,22 +292,22 @@ export default function Home() {
                     setInvestigationQuestion('Why did cart-service latency spike to 920ms?');
                     setActiveTab('investigate');
                   }}
-                  className="bg-neutrino-900 border border-neutrino-800 hover:border-indigo-500/80 p-5 rounded-xl cursor-pointer transition-all hover:shadow-lg group"
+                  className="bg-neutrino-900 border border-neutrino-800 hover:border-cyan-500/80 p-5 rounded-xl cursor-pointer transition-colors group"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-mono text-xs font-bold text-sky-400">INC-2026-088 (SEV-3)</span>
-                    <span className="text-[10px] font-mono uppercase bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-mono uppercase bg-amber-950 text-amber-300 border border-amber-800/80 px-1.5 py-0.5 rounded-md">
                       Incomplete Telemetry
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  <h4 className="text-sm font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
                     Cart Checkout Latency Degradation
                   </h4>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                     Demonstrates careful handling of missing evidence: flags missing Redis slowlog telemetry rather than
                     manufacturing an ungrounded root cause.
                   </p>
-                  <div className="mt-3 text-xs text-indigo-400 font-medium flex items-center space-x-1">
+                  <div className="mt-3 text-xs text-cyan-400 font-medium flex items-center gap-1">
                     <span>Investigate this scenario</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -327,10 +334,10 @@ export default function Home() {
         {activeTab === 'investigate' && (
           <div className="space-y-6">
             {/* Input Query Card */}
-            <div className="bg-neutrino-850 border border-neutrino-750 p-6 rounded-2xl shadow-xl space-y-4">
+            <div className="bg-neutrino-850 border border-neutrino-750 p-6 rounded-xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-neutrino-800">
                 <div className="flex items-center space-x-2">
-                  <Activity className="w-4 h-4 text-indigo-400" />
+                  <Activity className="w-4 h-4 text-cyan-400" />
                   <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">
                     Investigation Query Engine
                   </h2>
@@ -351,7 +358,7 @@ export default function Home() {
                       value={investigationQuestion}
                       onChange={(e) => setInvestigationQuestion(e.target.value)}
                       placeholder="e.g. Why did checkout-service fail at 14:02 UTC?"
-                      className="w-full bg-neutrino-900 border border-neutrino-700 focus:border-indigo-500 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono"
+                      className="w-full bg-neutrino-900 border border-neutrino-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 rounded-lg px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono h-10"
                     />
                   </div>
 
@@ -362,7 +369,7 @@ export default function Home() {
                     <select
                       value={selectedIncidentId}
                       onChange={(e) => setSelectedIncidentId(e.target.value)}
-                      className="w-full bg-neutrino-900 border border-neutrino-700 focus:border-indigo-500 rounded-lg px-3 py-2.5 text-xs text-slate-200 focus:outline-none font-mono"
+                      className="w-full bg-neutrino-900 border border-neutrino-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none font-mono h-10"
                     >
                       <option value="">Auto-Detect from Question</option>
                       {incidents.map((inc) => (
@@ -381,7 +388,7 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={isInvestigating}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/50 text-white rounded-lg text-xs font-bold uppercase tracking-wider shadow-md shadow-indigo-600/30 transition-all flex items-center space-x-2"
+                    className="h-10 px-5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-950 disabled:text-slate-500 text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-colors flex items-center gap-2"
                   >
                     {isInvestigating ? (
                       <>
@@ -421,7 +428,7 @@ export default function Home() {
           <div className="space-y-4">
             <div className="bg-neutrino-850 border border-neutrino-750 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center space-x-3">
-                <Database className="w-5 h-5 text-indigo-400" />
+                <Database className="w-5 h-5 text-cyan-400" />
                 <div>
                   <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
                     FalkorDB Subgraph Explorer
@@ -463,7 +470,22 @@ export default function Home() {
         )}
 
         {/* ============================================================== */}
-        {/* VIEW E: INVESTIGATION HISTORY                                  */}
+        {/* VIEW D: PERSISTENT GRAPH MEMORIES                              */}
+        {/* ============================================================== */}
+        {activeTab === 'memories' && <MemoryInspectorView />}
+
+        {/* ============================================================== */}
+        {/* VIEW E: LIVE TELEMETRY EXPLORER                                */}
+        {/* ============================================================== */}
+        {activeTab === 'telemetry' && <TelemetryView />}
+
+        {/* ============================================================== */}
+        {/* VIEW F: REMEDIATION ACTIONS & APPROVALS                        */}
+        {/* ============================================================== */}
+        {activeTab === 'remediation' && <RemediationView />}
+
+        {/* ============================================================== */}
+        {/* VIEW G: INVESTIGATION HISTORY                                  */}
         {/* ============================================================== */}
         {activeTab === 'history' && (
           <HistoryView
@@ -472,6 +494,11 @@ export default function Home() {
             onExploreGraph={() => setActiveTab('graph')}
           />
         )}
+
+        {/* ============================================================== */}
+        {/* VIEW H: OPERATIONAL AUDIT & RELIABILITY                        */}
+        {/* ============================================================== */}
+        {activeTab === 'audit' && <AuditView />}
       </main>
 
       {/* Footer */}
@@ -483,9 +510,11 @@ export default function Home() {
             <span>Graph Hacks Hackathon (FalkorDB)</span>
           </div>
           <div className="flex items-center space-x-4">
-            <span>Primary Track: Agents That Act on Connected Data</span>
+            <span>Primary Track: Track 01 — Agents That Act on Connected Data</span>
             <span>•</span>
-            <span>Stage 1 Completed</span>
+            <span>Additional: Track 02 (Memory) & Track 03 (Company Brain)</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-bold">Stage 4 Production Architecture</span>
           </div>
         </div>
       </footer>

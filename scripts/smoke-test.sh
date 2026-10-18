@@ -82,6 +82,34 @@ echo "7. Retrieving persisted investigation by ID (${INV_ID})..."
 RETRIEVED=$(curl -sf "${BASE_URL}/investigations/${INV_ID}")
 echo "Retrieved payload contains status: $(echo "$RETRIEVED" | grep -o '"status":"[^"]*"' || true)"
 
+echo "8. Testing Live Telemetry Ingestion (/api/v1/telemetry/ingest)..."
+INGEST_RES=$(curl -sf -X POST "${BASE_URL}/telemetry/ingest" \
+  -H "Content-Type: application/json" \
+  -d '{"events":[{"source":"smoke-test-runner","eventType":"log","severity":"info","timestamp":"2026-10-18T14:34:00Z","serviceId":"auth-service","summary":"Smoke test synthetic telemetry event","environment":"production"}]}')
+echo "Telemetry Ingestion result: $INGEST_RES"
+
+echo "9. Testing Dynamic Graph Intelligence & Failure Domains (/api/v1/intelligence/failure-domains)..."
+INTEL_RES=$(curl -sf "${BASE_URL}/intelligence/failure-domains")
+echo "Discovered failure domains: $(echo "$INTEL_RES" | grep -o '"count":[0-9]*' || true)"
+
+echo "10. Testing Action Proposals & Approval Boundary (/api/v1/actions)..."
+ACTIONS_RES=$(curl -sf "${BASE_URL}/actions")
+echo "Action proposals count: $(echo "$ACTIONS_RES" | grep -o '"count":[0-9]*' || true)"
+
+echo "11. Testing Stage 4 Readiness & Observability Metrics (/api/v1/health/ready & /api/v1/metrics)..."
+READY_RES=$(curl -sf "${BASE_URL}/health/ready")
+echo "Readiness status: $(echo "$READY_RES" | grep -o '"ready":[^,]*' || true)"
+METRICS_RES=$(curl -sf "${BASE_URL}/metrics")
+echo "Metrics uptime: $(echo "$METRICS_RES" | grep -o '"uptimeSeconds":[0-9]*' || true)"
+
+echo "12. Testing Stage 4 Tenant-Isolated Audit Trail (/api/v1/audit)..."
+AUDIT_RES=$(curl -sf -H "X-Tenant-ID: tenant-default" -H "X-User-Role: admin" "${BASE_URL}/audit?limit=5")
+echo "Audit records retrieved: $(echo "$AUDIT_RES" | grep -o '"count":[0-9]*' || true)"
+
+echo "13. Testing Stage 4 Graph Lifecycle Stats (/api/v1/lifecycle/stats)..."
+LC_STATS=$(curl -sf -H "X-Tenant-ID: tenant-default" "${BASE_URL}/lifecycle/stats")
+echo "Lifecycle evidence count: $(echo "$LC_STATS" | grep -o '"evidenceCount":[0-9]*' || true)"
+
 echo "=================================================="
-echo "   ✓ ALL SMOKE TEST CHECKS PASSED SUCCESSFULLY    "
+echo "   ✓ ALL STAGE 4 SMOKE TEST CHECKS PASSED         "
 echo "=================================================="

@@ -2,12 +2,13 @@ import { Router, Request, Response } from 'express';
 import { graphManager } from '../graph/client.js';
 import { graphRepository } from '../graph/repository.js';
 import { config } from '../config/config.js';
-import { HealthResponse, GraphHealthResponse } from '@neutrino/contracts';
+import { HealthResponse, GraphHealthResponse, ReadinessResponse } from '@neutrino/contracts';
+import { metricsRegistry } from '../observability/metrics.js';
 
 const router = Router();
 const startTime = Date.now();
 
-// GET /api/v1/health
+// GET /api/v1/health - Comprehensive health check
 router.get('/health', async (req: Request, res: Response) => {
   const dbHealth = await graphManager.checkHealth();
   const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
@@ -28,6 +29,52 @@ router.get('/health', async (req: Request, res: Response) => {
   };
 
   res.status(dbHealth.connected ? 200 : 503).json(response);
+});
+
+// GET /api/v1/health/live - Kubernetes/container liveness probe
+router.get('/health/live', (req: Request, res: Response) => {
+  const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+  res.json({
+    status: 'alive',
+    uptimeSeconds,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// GET /api/v1/health/ready - Kubernetes/container readiness probe
+router.get('/health/ready', async (req: Request, res: Response) => {
+  const dbHealth = await graphManager.checkHealth();
+  let indicesReady = false;
+
+  if (dbHealth.connected) {
+    try {
+      const counts = await graphRepository.getGraphCounts();
+      indicesReady = counts.labels.length > 0;
+    } catch {
+      indicesReady = false;
+    }
+  }
+
+  const isReady = dbHealth.connected && indicesReady;
+
+  const response: ReadinessResponse = {
+    ready: isReady,
+    checks: {
+      api: true,
+      databaseConnected: dbHealth.connected,
+      graphExists: dbHealth.connected,
+      indicesReady,
+    },
+    timestamp: new Date().toISOString(),
+  };
+
+  res.status(isReady ? 200 : 503).json(response);
+});
+
+// GET /api/v1/metrics - Operational diagnostic metrics
+router.get('/metrics', (req: Request, res: Response) => {
+  const snapshot = metricsRegistry.getSnapshot();
+  res.json(snapshot);
 });
 
 // GET /api/v1/graph/health

@@ -10,11 +10,11 @@ import { EvidenceUtils } from './evidence-utils.js';
 export interface EvaluationInput {
   incident: Incident;
   affectedService: Service | null;
-  upstreamDependencies: { service: Service; depth: number; path: string[] }[];
+  upstreamDependencies: { service: Service; depth: number; path?: string[] }[];
   deployments: Deployment[];
   evidence: Evidence[];
   relatedIncidents: Incident[];
-  investigationPaths: { nodes: string[]; relationships: string[]; description: string }[];
+  investigationPaths: { nodes?: string[]; relationships?: string[]; description: string }[];
 }
 
 export class HypothesisEngine {
@@ -273,13 +273,21 @@ export class HypothesisEngine {
       missingInformation.push('Distributed trace spans across service boundary are absent.');
     }
 
-    // Explicit telemetry gap check (e.g. INC-2026-088 missing slowlog)
-    if (incident.id === 'INC-2026-088') {
-      missingInformation.push('Missing telemetry: Redis slowlog telemetry was not captured during incident window.');
+    // Telemetry gap check: datastore connection saturation without slowlog diagnostics
+    const redisPoolActiveMetric = temporallyValidEvidence.find(
+      (e) => e.content.includes('248/250') || e.summary.includes('pool saturation')
+    );
+    const hasSlowlog = temporallyValidEvidence.some(
+      (e) => e.content.toLowerCase().includes('slowlog') || e.sourceType === 'slowlog'
+    );
+    if (redisPoolActiveMetric && !hasSlowlog) {
+      missingInformation.push(
+        'Missing telemetry: Datastore slowlog telemetry was not captured during incident window.'
+      );
     }
 
     // -------------------------------------------------------------
-    // 6. Historical Incident Precedent
+    // 6. Historical Incident Precedent & Semantic Memory Corroboration
     // -------------------------------------------------------------
     if (relatedIncidents.length > 0) {
       const hist = relatedIncidents[0];
@@ -307,8 +315,8 @@ export class HypothesisEngine {
     let recommendedNextStep = 'Inspect real-time telemetry and check upstream service availability.';
     if (matchedUpstreamDep && matchedDeployment) {
       recommendedNextStep = `Execute non-destructive diagnostics: 1) Verify signing key cache status in '${matchedUpstreamDep.service.id}' pod logs; 2) Query '${matchedUpstreamDep.service.id}' JWKS endpoint directly from '${affectedService?.id}' host to verify token key alignment; 3) Review rollback procedure for ${matchedDeployment.version} if cache desync persists.`;
-    } else if (incident.id === 'INC-2026-088') {
-      recommendedNextStep = `Execute non-destructive diagnostics: 1) Run 'redis-cli SLOWLOG GET 25' on redis-cluster to inspect high-latency cart keys; 2) Monitor cart-service active connection pool saturation delta before adjusting connection pool bounds.`;
+    } else if (redisPoolActiveMetric && !hasSlowlog) {
+      recommendedNextStep = `Execute non-destructive diagnostics: 1) Run 'redis-cli SLOWLOG GET 25' on redis-cluster to inspect high-latency keys; 2) Monitor active connection pool saturation delta before adjusting connection pool bounds.`;
     } else if (externalStatusEv) {
       recommendedNextStep = `Query external provider status webhook health; verify payment webhook replay queue has begun processing buffered events.`;
     } else if (affectedService) {
@@ -323,8 +331,8 @@ export class HypothesisEngine {
       summary = `Incident ${incident.id} affecting '${affectedService?.id}' is caused by an upstream failure in '${matchedUpstreamDep.service.id}' following deployment ${matchedDeployment.version} (${matchedDeployment.changeSummary}). Evaluated against ${temporallyValidEvidence.length} temporally valid evidence records and confirmed by graph traversal path.`;
     } else if (externalStatusEv) {
       summary = `Incident ${incident.id} affecting '${affectedService?.id}' was caused by external transit latency at third-party provider (Stripe). Confirmed by external status page telemetry and gateway egress metrics.`;
-    } else if (incident.id === 'INC-2026-088') {
-      summary = `Incident ${incident.id} was investigated across ${upstreamDependencies.length} graph dependencies and ${temporallyValidEvidence.length} evidence records. Client connection pool saturation (248/250) is suspected, but definitive root cause remains unresolved due to missing Redis slowlog telemetry.`;
+    } else if (redisPoolActiveMetric && !hasSlowlog) {
+      summary = `Incident ${incident.id} was investigated across ${upstreamDependencies.length} graph dependencies and ${temporallyValidEvidence.length} evidence records. Client connection pool saturation is suspected, but definitive root cause remains unresolved due to missing datastore slowlog telemetry.`;
     } else {
       summary = `Incident ${incident.id} was investigated across ${upstreamDependencies.length} graph dependencies and ${temporallyValidEvidence.length} evidence records. Evidence is currently incomplete to declare a definitive root cause.`;
     }

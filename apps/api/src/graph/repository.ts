@@ -31,6 +31,18 @@ export class GraphRepository {
     return this.manager.getGraph(this.graphName);
   }
 
+  /**
+   * Helper that returns a parameterized Cypher boolean expression enforcing tenant boundaries.
+   * If tenantId is 'tenant-default', allows records with 'tenant-default', 'shared', or null tenantId.
+   * If tenantId is a specific tenant, strictly allows only that tenant or explicitly 'shared' records.
+   */
+  private tenantFilter(alias: string, tenantId = 'tenant-default'): string {
+    if (tenantId === 'tenant-default') {
+      return `(${alias}.tenantId = 'tenant-default' OR ${alias}.tenantId = 'shared' OR ${alias}.tenantId IS NULL)`;
+    }
+    return `(${alias}.tenantId = '${tenantId}' OR ${alias}.tenantId = 'shared')`;
+  }
+
   // ==========================================
   // Schema Indexes & Constraints
   // ==========================================
@@ -45,6 +57,11 @@ export class GraphRepository {
       'Hypothesis',
       'Investigation',
       'SourceRecord',
+      'MemoryEpisode',
+      'KnowledgeClaim',
+      'DiagnosticProcedure',
+      'ActionProposal',
+      'AuditRecord',
     ];
 
     for (const label of indexLabels) {
@@ -54,7 +71,16 @@ export class GraphRepository {
         // Index might already exist
         const msg = String(err?.message || '');
         if (!msg.includes('already exists') && !msg.includes('Index already exists')) {
-          console.warn(`[GraphRepository] Index notice for ${label}:`, msg);
+          console.warn(`[GraphRepository] Index notice for ${label}.id:`, msg);
+        }
+      }
+
+      try {
+        await graph.query(`CREATE INDEX FOR (n:${label}) ON (n.tenantId)`);
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        if (!msg.includes('already exists') && !msg.includes('Index already exists')) {
+          console.warn(`[GraphRepository] Index notice for ${label}.tenantId:`, msg);
         }
       }
     }
@@ -109,11 +135,14 @@ export class GraphRepository {
   // ==========================================
   // Incidents
   // ==========================================
-  public async listIncidents(limit = 20): Promise<Incident[]> {
+  public async listIncidents(limit = 20, tenantId = 'tenant-default'): Promise<Incident[]> {
     const graph = await this.getGraph();
     const safeLimit = Math.min(Math.max(1, limit), config.MAX_GRAPH_RESULTS_BOUND);
+    const filter = this.tenantFilter('i', tenantId);
+
     const res = await graph.query(
       `MATCH (i:Incident)
+       WHERE ${filter}
        RETURN i
        ORDER BY i.startedAt DESC
        LIMIT $limit`,
@@ -123,10 +152,13 @@ export class GraphRepository {
     return (res.data || []).map((row: any) => this.extractProperties(row.i));
   }
 
-  public async getIncidentById(incidentId: string): Promise<Incident | null> {
+  public async getIncidentById(incidentId: string, tenantId = 'tenant-default'): Promise<Incident | null> {
     const graph = await this.getGraph();
+    const filter = this.tenantFilter('i', tenantId);
+
     const res = await graph.query(
       `MATCH (i:Incident {id: $id})
+       WHERE ${filter}
        RETURN i LIMIT 1`,
       { params: { id: incidentId } }
     );
@@ -138,7 +170,10 @@ export class GraphRepository {
   // ==========================================
   // Operation A — Incident Context
   // ==========================================
-  public async getIncidentContext(incidentId: string): Promise<{
+  public async getIncidentContext(
+    incidentId: string,
+    tenantId = 'tenant-default'
+  ): Promise<{
     incident: Incident | null;
     affectedService: Service | null;
     owningTeam: Team | null;
@@ -147,11 +182,15 @@ export class GraphRepository {
     relatedIncidents: Incident[];
   }> {
     const graph = await this.getGraph();
+    const iFilter = this.tenantFilter('i', tenantId);
+    const sFilter = this.tenantFilter('s', tenantId);
 
-    // 1. Incident & affected service
+    // 1. Incident & affected service with tenant boundary enforcement
     const primaryRes = await graph.query(
       `MATCH (i:Incident {id: $id})
+       WHERE ${iFilter}
        OPTIONAL MATCH (i)-[:AFFECTS]->(s:Service)
+       WHERE ${sFilter}
        OPTIONAL MATCH (s)-[:OWNED_BY]->(t:Team)
        RETURN i, s, t LIMIT 1`,
       { params: { id: incidentId } }
@@ -173,14 +212,17 @@ export class GraphRepository {
     const affectedService: Service | null = row.s ? this.extractProperties(row.s) : null;
     const owningTeam: Team | null = row.t ? this.extractProperties(row.t) : null;
 
-    // 2. Evidence connected to incident
-    const evidence = await this.getIncidentEvidence(incidentId);
+    // 2. Evidence connected to incident isolated by tenant
+    const evidence = await this.getIncidentEvidence(incidentId, tenantId);
 
     // 3. Deployments on affected service and its upstream dependencies
     let deployments: Deployment[] = [];
     if (affectedService) {
+      const dFilter = this.tenantFilter('d', tenantId);
+      const targetFilter = this.tenantFilter('target', tenantId);
       const depRes = await graph.query(
         `MATCH (s:Service {id: $svcId})-[:DEPENDS_ON*0..2]->(target:Service)-[:HAS_DEPLOYMENT]->(d:Deployment)
+         WHERE ${targetFilter} AND ${dFilter}
          RETURN DISTINCT d
          ORDER BY d.deployedAt DESC
          LIMIT 10`,
@@ -189,8 +231,8 @@ export class GraphRepository {
       deployments = (depRes.data || []).map((r: any) => this.extractProperties(r.d));
     }
 
-    // 4. Related incidents
-    const relatedIncidents = await this.getRelatedIncidents(incidentId);
+    // 4. Related incidents isolated by tenant
+    const relatedIncidents = await this.getRelatedIncidents(incidentId, tenantId);
 
     return {
       incident,
@@ -205,17 +247,20 @@ export class GraphRepository {
   // ==========================================
   // Operation B — Dependency Traversal
   // (Service A depends on Service B: (s)-[:DEPENDS_ON]->(dep))
+  // Traversal cannot jump across tenant boundaries into another tenant's private services
   // ==========================================
   public async getServiceDependencies(
     serviceId: string,
-    maxDepth = 3
+    maxDepth = 3,
+    tenantId = 'tenant-default'
   ): Promise<{ service: Service; depth: number; path: string[] }[]> {
     const graph = await this.getGraph();
     const safeDepth = Math.min(Math.max(1, maxDepth), config.MAX_GRAPH_TRAVERSAL_DEPTH);
+    const nFilter = this.tenantFilter('n', tenantId);
 
-    // Dynamic depth bounded in Cypher
     const cypher = `
       MATCH p = (start:Service {id: $svcId})-[:DEPENDS_ON*1..${safeDepth}]->(dep:Service)
+      WHERE ALL(n IN nodes(p) WHERE ${nFilter})
       RETURN dep, length(p) AS depth, [n IN nodes(p) | n.id] AS pathNodes
       ORDER BY depth ASC
       LIMIT 50
@@ -240,13 +285,16 @@ export class GraphRepository {
   // ==========================================
   public async getAffectedServices(
     serviceId: string,
-    maxDepth = 3
+    maxDepth = 3,
+    tenantId = 'tenant-default'
   ): Promise<{ service: Service; depth: number; path: string[] }[]> {
     const graph = await this.getGraph();
     const safeDepth = Math.min(Math.max(1, maxDepth), config.MAX_GRAPH_TRAVERSAL_DEPTH);
+    const nFilter = this.tenantFilter('n', tenantId);
 
     const cypher = `
       MATCH p = (consumer:Service)-[:DEPENDS_ON*1..${safeDepth}]->(target:Service {id: $svcId})
+      WHERE ALL(n IN nodes(p) WHERE ${nFilter})
       RETURN consumer, length(p) AS depth, [n IN nodes(p) | n.id] AS pathNodes
       ORDER BY depth ASC
       LIMIT 50
@@ -268,14 +316,16 @@ export class GraphRepository {
   // ==========================================
   // Operation D — Recent Changes / Deployments
   // ==========================================
-  public async getRecentDeployments(serviceIds: string[], limit = 15): Promise<Deployment[]> {
+  public async getRecentDeployments(serviceIds: string[], limit = 15, tenantId = 'tenant-default'): Promise<Deployment[]> {
     if (!serviceIds.length) return [];
     const graph = await this.getGraph();
     const safeLimit = Math.min(Math.max(1, limit), 50);
+    const dFilter = this.tenantFilter('d', tenantId);
+    const sFilter = this.tenantFilter('s', tenantId);
 
     const res = await graph.query(
       `MATCH (s:Service)-[:HAS_DEPLOYMENT]->(d:Deployment)
-       WHERE s.id IN $serviceIds
+       WHERE s.id IN $serviceIds AND ${sFilter} AND ${dFilter}
        RETURN d, s.id AS serviceId
        ORDER BY d.deployedAt DESC
        LIMIT $limit`,
@@ -288,10 +338,12 @@ export class GraphRepository {
   // ==========================================
   // Operation: Service Owners
   // ==========================================
-  public async getServiceOwners(serviceId: string): Promise<Team | null> {
+  public async getServiceOwners(serviceId: string, tenantId = 'tenant-default'): Promise<Team | null> {
     const graph = await this.getGraph();
+    const sFilter = this.tenantFilter('s', tenantId);
     const res = await graph.query(
       `MATCH (s:Service {id: $id})-[:OWNED_BY]->(t:Team)
+       WHERE ${sFilter}
        RETURN t LIMIT 1`,
       { params: { id: serviceId } }
     );
@@ -302,10 +354,12 @@ export class GraphRepository {
   // ==========================================
   // Operation E — Incident Evidence Retrieval
   // ==========================================
-  public async getIncidentEvidence(incidentId: string): Promise<Evidence[]> {
+  public async getIncidentEvidence(incidentId: string, tenantId = 'tenant-default'): Promise<Evidence[]> {
     const graph = await this.getGraph();
+    const eFilter = this.tenantFilter('e', tenantId);
     const res = await graph.query(
       `MATCH (e:Evidence)-[:OBSERVED_IN]->(i:Incident {id: $id})
+       WHERE ${eFilter}
        RETURN e
        ORDER BY e.observedAt ASC
        LIMIT 50`,
@@ -318,10 +372,12 @@ export class GraphRepository {
   // ==========================================
   // Operation F — Historical Comparison
   // ==========================================
-  public async getRelatedIncidents(incidentId: string): Promise<Incident[]> {
+  public async getRelatedIncidents(incidentId: string, tenantId = 'tenant-default'): Promise<Incident[]> {
     const graph = await this.getGraph();
+    const histFilter = this.tenantFilter('hist', tenantId);
     const res = await graph.query(
       `MATCH (i:Incident {id: $id})-[:RELATED_TO]-(hist:Incident)
+       WHERE ${histFilter}
        RETURN DISTINCT hist
        LIMIT 10`,
       { params: { id: incidentId } }
@@ -336,16 +392,21 @@ export class GraphRepository {
   public async getInvestigationPaths(
     startId: string,
     endId: string,
-    maxDepth = 4
+    maxDepth = 4,
+    tenantId = 'tenant-default'
   ): Promise<{ nodes: string[]; relationships: string[]; description: string }[]> {
     const graph = await this.getGraph();
     const safeDepth = Math.min(Math.max(1, maxDepth), config.MAX_GRAPH_TRAVERSAL_DEPTH);
+    const nFilter = this.tenantFilter('n', tenantId);
 
     const cypher = `
       MATCH p = (start {id: $startId})-[r*1..${safeDepth}]-(target {id: $endId})
+      WHERE ALL(rel IN relationships(p) WHERE type(rel) IN ['AFFECTS', 'DEPENDS_ON', 'HAS_DEPLOYMENT', 'RELATED_TO'])
+        AND ALL(n IN nodes(p) WHERE ${nFilter})
       RETURN p,
              [n IN nodes(p) | coalesce(n.id, id(n))] AS nodeIds,
              [rel IN relationships(p) | type(rel)] AS relTypes
+      ORDER BY length(p) ASC
       LIMIT 5
     `;
 
@@ -379,10 +440,12 @@ export class GraphRepository {
   // ==========================================
   // Subgraph for Visualization
   // ==========================================
-  public async getSubgraph(incidentId: string): Promise<SubgraphData> {
+  public async getSubgraph(incidentId: string, tenantId = 'tenant-default'): Promise<SubgraphData> {
     const graph = await this.getGraph();
+    const iFilter = this.tenantFilter('i', tenantId);
     const cypher = `
       MATCH (i:Incident {id: $id})
+      WHERE ${iFilter}
       OPTIONAL MATCH (i)-[r1:AFFECTS]->(s:Service)
       OPTIONAL MATCH (s)-[r2:DEPENDS_ON*1..2]->(dep:Service)
       OPTIONAL MATCH (s)-[r3:OWNED_BY]->(t1:Team)
@@ -492,13 +555,15 @@ export class GraphRepository {
   // ==========================================
   // Step 8: Persist Investigation to FalkorDB
   // ==========================================
-  public async persistInvestigation(result: InvestigationResult): Promise<void> {
+  public async persistInvestigation(result: InvestigationResult, callerTenantId?: string): Promise<void> {
     const graph = await this.getGraph();
+    const tenantId = callerTenantId || result.tenantId || 'tenant-default';
 
     // 1. Create or update Investigation node
     await graph.query(
       `MERGE (inv:Investigation {id: $id})
-       SET inv.question = $question,
+       SET inv.tenantId = $tenantId,
+           inv.question = $question,
            inv.status = $status,
            inv.startedAt = $startedAt,
            inv.completedAt = $completedAt,
@@ -511,6 +576,7 @@ export class GraphRepository {
       {
         params: {
           id: result.investigationId,
+          tenantId,
           question: result.question,
           status: result.status,
           startedAt: result.startedAt,
@@ -537,7 +603,8 @@ export class GraphRepository {
     for (const exp of result.candidateExplanations) {
       await graph.query(
         `MERGE (h:Hypothesis {id: $hypId})
-         SET h.statement = $statement,
+         SET h.tenantId = $tenantId,
+             h.statement = $statement,
              h.status = $status,
              h.explanation = $explanation,
              h.incidentId = $incId,
@@ -548,6 +615,7 @@ export class GraphRepository {
         {
           params: {
             hypId: exp.id,
+            tenantId,
             statement: exp.statement,
             status: exp.status,
             explanation: exp.explanation,
@@ -579,12 +647,18 @@ export class GraphRepository {
   }
 
   // ==========================================
-  // Retrieve Stored Investigation
+  // Retrieve Stored Investigation isolated by tenant
   // ==========================================
-  public async getPersistedInvestigation(investigationId: string): Promise<InvestigationResult | null> {
+  public async getPersistedInvestigation(
+    investigationId: string,
+    tenantId = 'tenant-default'
+  ): Promise<InvestigationResult | null> {
     const graph = await this.getGraph();
+    const filter = this.tenantFilter('inv', tenantId);
+
     const res = await graph.query(
       `MATCH (inv:Investigation {id: $id})
+       WHERE ${filter}
        RETURN inv.rawResult AS rawResult LIMIT 1`,
       { params: { id: investigationId } }
     );
@@ -600,12 +674,17 @@ export class GraphRepository {
     }
   }
 
-  public async listPersistedInvestigations(limit = 20): Promise<InvestigationHistoryItem[]> {
+  public async listPersistedInvestigations(
+    limit = 20,
+    tenantId = 'tenant-default'
+  ): Promise<InvestigationHistoryItem[]> {
     const graph = await this.getGraph();
     const safeLimit = Math.min(Math.max(1, limit), 50);
+    const filter = this.tenantFilter('inv', tenantId);
 
     const res = await graph.query(
       `MATCH (inv:Investigation)
+       WHERE ${filter}
        RETURN inv.id AS id,
               inv.incidentId AS incidentId,
               inv.question AS question,
@@ -621,6 +700,7 @@ export class GraphRepository {
 
     return (res.data || []).map((row: any) => ({
       id: row.id,
+      tenantId,
       incidentId: row.incidentId || null,
       question: row.question,
       status: row.status,

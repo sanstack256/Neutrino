@@ -59,7 +59,7 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
                 onClick={() => handleSelectIncident(inc.id)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-neutrino-800 border-indigo-500/80 shadow-md shadow-indigo-950/20'
+                    ? 'bg-neutrino-800 border-cyan-500/80 shadow-sm shadow-cyan-950/20'
                     : 'bg-neutrino-850 border-neutrino-750 hover:border-neutrino-700'
                 }`}
               >
@@ -75,7 +75,7 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
 
                 <div className="flex items-center justify-between text-xs text-slate-400 font-mono pt-2 border-t border-neutrino-800">
                   <div className="flex items-center space-x-1 truncate max-w-[180px]">
-                    <Server className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                    <Server className="w-3 h-3 text-cyan-400 flex-shrink-0" />
                     <span className="truncate">{inc.affectedService || 'Unknown service'}</span>
                   </div>
                   <div className="flex items-center space-x-1">
@@ -96,12 +96,12 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
             Loading graph context from FalkorDB...
           </div>
         ) : detail ? (
-          <div className="bg-neutrino-850 border border-neutrino-750 rounded-xl p-6 space-y-6 shadow-xl">
+          <div className="bg-neutrino-850 border border-neutrino-750 rounded-xl p-6 space-y-6 shadow-lg">
             {/* Header and Quick Actions */}
             <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-neutrino-800">
               <div>
                 <div className="flex items-center space-x-2 mb-1.5">
-                  <span className="font-mono text-xs text-indigo-400 font-bold">{detail.incident.id}</span>
+                  <span className="font-mono text-xs text-cyan-400 font-bold">{detail.incident.id}</span>
                   <StatusBadge label={detail.incident.severity} variant={detail.incident.severity as any} />
                   <StatusBadge label={detail.incident.status} variant={detail.incident.status as any} />
                 </div>
@@ -113,13 +113,13 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => onExploreIncidentSubgraph(detail.incident.id)}
-                  className="px-3 py-1.5 bg-neutrino-800 hover:bg-neutrino-700 text-slate-200 border border-neutrino-700 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1.5"
+                  className="px-3.5 py-2 bg-neutrino-800 hover:bg-neutrino-700 text-slate-200 border border-neutrino-700 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1.5"
                 >
                   <span>Explore Subgraph</span>
                 </button>
                 <button
                   onClick={() => onInvestigateIncident(detail.incident.id)}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition-colors flex items-center space-x-1.5"
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center space-x-1.5"
                 >
                   <Activity className="w-3.5 h-3.5" />
                   <span>Investigate Incident</span>
@@ -133,7 +133,7 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
                 <span className="text-slate-500 uppercase block text-[10px]">Affected Service</span>
                 <span className="text-slate-100 font-bold text-sm">{detail.affectedService?.name || 'N/A'}</span>
                 <span className="text-slate-400 block text-[11px] mt-0.5">
-                  Criticality: <span className="text-indigo-400">{detail.affectedService?.criticality}</span>
+                  Criticality: <span className="text-cyan-400">{detail.affectedService?.criticality}</span>
                 </span>
               </div>
               <div className="border-l border-neutrino-800 pl-4">
@@ -148,7 +148,7 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
             {/* Connected Deployments */}
             <div>
               <div className="flex items-center space-x-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                <GitCommit className="w-3.5 h-3.5 text-purple-400" />
+                <GitCommit className="w-3.5 h-3.5 text-sky-400" />
                 <span>Connected Service Deployments ({detail.recentDeployments.length})</span>
               </div>
               <div className="space-y-2">
@@ -159,8 +159,8 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
                   >
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-purple-300 font-bold">{d.serviceId}</span>
-                        <span className="bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.2 rounded text-[10px]">
+                        <span className="text-sky-300 font-bold">{d.serviceId}</span>
+                        <span className="bg-sky-950/70 text-sky-300 border border-sky-800/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
                           {d.version}
                         </span>
                       </div>

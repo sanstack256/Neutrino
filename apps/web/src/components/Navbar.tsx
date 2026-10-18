@@ -1,10 +1,10 @@
 import React from 'react';
-import { Database, Activity, ShieldCheck, Layers, GitGraph, History, AlertCircle } from 'lucide-react';
+import { Database, Activity, ShieldCheck, Layers, GitGraph, History, AlertCircle, Brain } from 'lucide-react';
 import { GraphHealthResponse } from '@neutrino/contracts';
 
 interface NavbarProps {
-  activeTab: 'overview' | 'incidents' | 'investigate' | 'graph' | 'history';
-  setActiveTab: (tab: 'overview' | 'incidents' | 'investigate' | 'graph' | 'history') => void;
+  activeTab: 'overview' | 'incidents' | 'investigate' | 'memories' | 'telemetry' | 'remediation' | 'graph' | 'history' | 'audit';
+  setActiveTab: (tab: 'overview' | 'incidents' | 'investigate' | 'memories' | 'telemetry' | 'remediation' | 'graph' | 'history' | 'audit') => void;
   graphHealth: GraphHealthResponse | null;
   loading: boolean;
 }
@@ -15,14 +15,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('overview')}>
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+          <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center shadow-md shadow-cyan-950/40">
             <GitGraph className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-lg text-slate-100 tracking-tight">NEUTRINO</span>
-              <span className="text-[10px] font-mono uppercase bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 px-1.5 py-0.5 rounded">
-                Stage 1
+              <span className="font-bold text-base text-slate-100 tracking-tight">NEUTRINO</span>
+              <span className="text-[10px] font-mono uppercase bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.5 rounded font-medium">
+                Stage 5 Final
               </span>
             </div>
             <p className="text-xs text-slate-400">Graph-Native Investigation Platform</p>
@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
             onClick={() => setActiveTab('overview')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeTab === 'overview'
-                ? 'bg-neutrino-700 text-slate-100 shadow-sm'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
             }`}
           >
@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
             onClick={() => setActiveTab('incidents')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeTab === 'incidents'
-                ? 'bg-neutrino-700 text-slate-100 shadow-sm'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
             }`}
           >
@@ -55,18 +55,49 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
             onClick={() => setActiveTab('investigate')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5 ${
               activeTab === 'investigate'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-indigo-400 hover:text-indigo-300 hover:bg-neutrino-800'
+                ? 'bg-cyan-600 text-white shadow-sm font-semibold'
+                : 'text-slate-400 hover:text-cyan-300 hover:bg-neutrino-800'
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
             <span>Investigate</span>
           </button>
           <button
+            onClick={() => setActiveTab('memories')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5 ${
+              activeTab === 'memories'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>Memories</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('telemetry')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeTab === 'telemetry'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
+            }`}
+          >
+            Telemetry
+          </button>
+          <button
+            onClick={() => setActiveTab('remediation')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeTab === 'remediation'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
+            }`}
+          >
+            Actions & Approvals
+          </button>
+          <button
             onClick={() => setActiveTab('graph')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeTab === 'graph'
-                ? 'bg-neutrino-700 text-slate-100 shadow-sm'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
             }`}
           >
@@ -76,11 +107,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
             onClick={() => setActiveTab('history')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeTab === 'history'
-                ? 'bg-neutrino-700 text-slate-100 shadow-sm'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
             }`}
           >
             History
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5 ${
+              activeTab === 'audit'
+                ? 'bg-neutrino-750 text-cyan-300 border border-neutrino-700 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-neutrino-800'
+            }`}
+          >
+            <span>Audit & Health</span>
           </button>
         </nav>
 
@@ -102,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, graphHe
           )}
 
           <div className="hidden lg:flex items-center space-x-1.5 text-xs text-slate-400 bg-neutrino-800 px-2.5 py-1.5 rounded-md border border-neutrino-750 font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             <span>Deterministic Mode</span>
           </div>
         </div>

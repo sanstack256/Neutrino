@@ -17,6 +17,8 @@ const ConfigSchema = z.object({
   FALKORDB_PORT: z.coerce.number().default(6379),
   FALKORDB_USERNAME: z.string().optional().default(''),
   FALKORDB_PASSWORD: z.string().optional().default(''),
+  FALKORDB_URL: z.string().optional().default(''),
+  FALKORDB_TLS: z.coerce.boolean().default(false),
   FALKORDB_GRAPH_NAME: z.string().default('neutrino_graph'),
   FALKORDB_TEST_GRAPH_NAME: z.string().default('neutrino_test_graph'),
 
@@ -28,6 +30,10 @@ const ConfigSchema = z.object({
   LLM_PROVIDER: z.enum(['none', 'gemini', 'openai', 'anthropic']).default('none'),
   LLM_MODEL: z.string().optional().default(''),
   LLM_API_KEY: z.string().optional().default(''),
+
+  AUTH_PROVIDER: z.enum(['local', 'jwt', 'oidc']).default('local'),
+  JWT_SECRET: z.string().optional().default(''),
+  JWT_PUBLIC_KEY: z.string().optional().default(''),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;

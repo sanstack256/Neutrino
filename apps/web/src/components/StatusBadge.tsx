@@ -19,14 +19,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, variant = 'neut
   } else if (v === 'supported' || v === 'success' || v === 'resolved') {
     colorClasses = 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80';
   } else if (v === 'unresolved' || v === 'investigating') {
-    colorClasses = 'bg-indigo-950/60 text-indigo-300 border-indigo-800/80';
+    colorClasses = 'bg-cyan-950/60 text-cyan-300 border-cyan-800/80';
   }
 
-  const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm';
+  const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs';
 
   return (
     <span
-      className={`inline-flex items-center font-medium font-mono uppercase tracking-wider rounded border ${sizeClasses} ${colorClasses}`}
+      className={`inline-flex items-center font-medium font-mono uppercase tracking-wider rounded-md border ${sizeClasses} ${colorClasses}`}
     >
       {label}
     </span>

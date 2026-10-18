@@ -193,3 +193,163 @@ RETURN p,
        [rel IN relationships(p) | type(rel)] AS relTypes
 LIMIT 5
 ```
+
+---
+
+## 5. Stage 2 Persistent Graph Memory Nodes
+
+### `MemoryEpisode`
+Represents a discrete, synthesized operational investigation experience persisted in FalkorDB.
+- **Properties**:
+  - `id` (String, Indexed): Stable episode identifier (e.g., `ep-8a3f912c`)
+  - `investigationId` (String): Source investigation identifier
+  - `incidentId` (String, Optional): Associated incident ID
+  - `summary` (String): Factual summary grounded in observed investigation events
+  - `serviceIds` (List<String>): Services traversed and evaluated
+  - `hypothesisIds` (List<String>): Hypotheses evaluated
+  - `supportedHypothesisId` (String, Optional): Validated explanation ID
+  - `outcome` (String): `completed`, `insufficient-evidence`, `blocked`
+  - `status` (String): `active`, `superseded`, `invalidated`, `archived`
+  - `createdAt` (ISO 8601 UTC Timestamp)
+  - `synthetic` (Boolean)
+
+### `KnowledgeClaim`
+Represents an evidence-grounded semantic operational fact or causal dependency claim.
+- **Properties**:
+  - `id` (String, Indexed): Unique claim ID (e.g., `claim-0dbe71bb`)
+  - `subject` (String): Entity subject (e.g., `checkout-service`)
+  - `predicate` (String): Relational predicate (`depends_on`, `caused_by_condition`, `degraded_by`)
+  - `object` (String): Entity object (e.g., `auth-service`, `database-failure`)
+  - `statement` (String): Natural language proposition
+  - `claimType` (String): `observational`, `inferred`, `verified`
+  - `status` (String): `candidate`, `active`, `superseded`, `invalidated`, `archived`
+  - `confidence` (Float): Quality score [0.0 - 1.0]
+  - `sourceProvenance` (String): Traceable origin investigation or monitor
+  - `firstObservedAt` (ISO 8601 UTC Timestamp)
+  - `lastVerifiedAt` (ISO 8601 UTC Timestamp)
+  - `validUntil` (ISO 8601 UTC Timestamp, Optional)
+  - `revision` (Integer): Monotonically increasing revision number
+  - `supersededById` (String, Optional): ID of newer claim superseding this record
+  - `invalidationReason` (String, Optional): Documented justification for invalidation
+
+### `DiagnosticProcedure`
+Represents a reusable, non-destructive diagnostic procedure derived from validated investigations.
+- **Properties**:
+  - `id` (String, Indexed): Unique procedure ID (e.g., `proc-jwks-check`)
+  - `name` (String): Short descriptive procedure title
+  - `purpose` (String): Diagnostic objective
+  - `serviceId` (String): Target service
+  - `preconditions` (List<String>): Trigger criteria (e.g., active 500 error spikes)
+  - `requiredEvidenceTypes` (List<String>): Evidence sources needed (`metric`, `log`)
+  - `diagnosticSteps` (List<String>): Ordered non-destructive steps
+  - `expectedObservations` (List<String>): Expected healthy signals
+  - `supportingConditions` (List<String>): Observations supporting the diagnosis
+  - `contradictingConditions` (List<String>): Observations refuting the diagnosis
+  - `knownFailureModes` (List<String>): Known failure symptoms
+  - `status` (String): `candidate`, `active`, `superseded`, `invalidated`, `archived`
+  - `validationCriteria` (String): Verification check
+  - `version` (Integer)
+  - `lastValidatedAt` (ISO 8601 UTC Timestamp)
+  - `synthetic` (Boolean)
+
+---
+
+## 6. Stage 2 Memory Graph Relationships
+
+| Relationship | Source Label | Target Label | Description |
+|---|---|---|---|
+| `GENERATED_EPISODE` | `Investigation` | `MemoryEpisode` | Links completed investigation to persisted episode |
+| `CONCERNS_SERVICE` | `MemoryEpisode` | `Service` | Associates episode with impacted services |
+| `CONCERNS_INCIDENT` | `MemoryEpisode` | `Incident` | Associates episode with root incident |
+| `RECORDED_CLAIM` | `MemoryEpisode` | `KnowledgeClaim` | Links episode to extracted operational facts |
+| `RECOMMENDED_PROCEDURE` | `MemoryEpisode` | `DiagnosticProcedure`| Links episode to derived diagnostic procedure |
+| `GROUNDED_IN` | `KnowledgeClaim` | `Evidence` | Explicit provenance edge to corroborating evidence |
+| `CONTRADICTED_BY` | `KnowledgeClaim` | `Evidence` | Explicit edge to live disproving evidence |
+| `SUPERSEDES` | `KnowledgeClaim` | `KnowledgeClaim` | Audit edge from new revision to replaced revision |
+| `TARGETS_SERVICE` | `DiagnosticProcedure` | `Service` | Connects procedure to target service topology |
+
+---
+
+## 7. Stage 2 Memory Cypher Operations
+
+### Operation H — Multi-Signal Connected Memory Retrieval
+```cypher
+MATCH (c:KnowledgeClaim)
+WHERE c.status = 'active' AND (c.subject IN $services OR c.object IN $services)
+RETURN c ORDER BY c.lastVerifiedAt DESC LIMIT $limit
+```
+
+### Operation I — Validated Diagnostic Procedure Recall
+```cypher
+MATCH (p:DiagnosticProcedure)
+WHERE p.status = 'active' AND p.serviceId IN $services
+RETURN p ORDER BY p.lastValidatedAt DESC LIMIT $limit
+```
+
+### Operation J — Atomic Claim Supersession
+```cypher
+MATCH (c:KnowledgeClaim {id: $cId}), (old:KnowledgeClaim {id: $oldId})
+MERGE (c)-[:SUPERSEDES]->(old)
+SET old.status = 'superseded', old.supersededById = $cId
+```
+
+### Operation K — Grounded Evidence Verification
+```cypher
+MATCH (c:KnowledgeClaim {id: $id})-[:GROUNDED_IN]->(e:Evidence)
+RETURN e
+```
+
+---
+
+## 8. Stage 4 Production Architecture & Multi-Tenant Model
+
+### 8.1 Tenant Ownership & Boundaries
+Every operational entity in FalkorDB (`Service`, `Deployment`, `Incident`, `Evidence`, `Team`, `Investigation`, `Hypothesis`, `MemoryEpisode`, `KnowledgeClaim`, `DiagnosticProcedure`, `ActionProposal`, `AuditRecord`, `EventProcessingStatus`) includes a `tenantId` property.
+- **Default Isolation Rule**:
+  ```cypher
+  WHERE (n.tenantId = $tenantId OR n.tenantId = 'shared' OR ($tenantId = 'tenant-default' AND n.tenantId IS NULL))
+  ```
+- **Strict Boundary Traversal Rule**:
+  Multi-hop graph paths are restricted to ensure no node along the traversal hops into another tenant's private infrastructure:
+  ```cypher
+  MATCH p = (s:Service {id: $serviceId})-[:DEPENDS_ON*1..3]->(target:Service)
+  WHERE ALL(n IN nodes(p) WHERE n.tenantId = $tenantId OR n.tenantId = 'shared' OR ($tenantId = 'tenant-default' AND n.tenantId IS NULL))
+  RETURN target, relationships(p)
+  ```
+
+### 8.2 Additional Stage 4 Node Labels
+
+#### `AuditRecord`
+Durable operational audit trail stored in FalkorDB for security, compliance, and sensitive action tracking.
+- **Properties**:
+  - `id` (String, Indexed): Stable UUID identifier (`aud-xxx`)
+  - `tenantId` (String, Indexed): Owning tenant
+  - `principalId` (String): Authenticated identity that executed or requested the action
+  - `action` (String): Action identifier (`telemetry_ingested`, `investigation_created`, `action_proposed`, `action_approved`, `action_rejected`, `action_executed`, `lifecycle_pruned`, `authz_denied`)
+  - `resourceType` (String): Target resource category (`action_proposal`, `incident`, `telemetry_batch`, `graph_lifecycle`)
+  - `resourceId` (String): Targeted resource ID
+  - `status` (String): `success`, `failure`, `denied`
+  - `timestamp` (ISO 8601 UTC Timestamp)
+  - `correlationId` (String): End-to-end request tracing correlation ID
+  - `details` (JSON String): Structured action details
+
+#### `EventProcessingStatus`
+Durable event ingestion and retry lifecycle status tracking.
+- **Properties**:
+  - `eventId` (String, Indexed): Telemetry event ID
+  - `tenantId` (String, Indexed): Owning tenant
+  - `state` (String): `received`, `validated`, `persisted`, `duplicate`, `rejected`, `failed`
+  - `timestamp` (ISO 8601 UTC Timestamp)
+  - `retryCount` (Integer): Backoff retry counter
+  - `contentHash` (String, Indexed): Content hash for deduplication
+  - `error` (String, Optional): Failure description if rejected or failed
+
+### 8.3 Documented Retention Policies
+| Category | Retention Policy | Protection Criteria |
+|---|---|---|
+| `telemetry_evidence` | 30 days | Preserved if linked to active incident (`status IN ['investigating', 'identified', 'monitoring']`), hypothesis (`SUPPORTED_BY`), memory claim (`GROUNDED_IN`), or action proposal (`VERIFIED_BY`) |
+| `investigations` | 90 days | Preserved if investigation status is active or referenced by postmortem |
+| `knowledge_claims` | Permanent provenance | Superseded claims transitioned to `archived` status rather than destructively deleted |
+| `audit_records` | 365 days | Protected immutable audit log; non-erasable by standard operators |
+
+

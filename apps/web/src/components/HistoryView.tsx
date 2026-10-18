@@ -32,7 +32,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onRefresh, on
       <div className="flex items-center justify-between pb-3 border-b border-neutrino-800">
         <div>
           <h2 className="text-base font-bold text-slate-100 flex items-center space-x-2">
-            <History className="w-5 h-5 text-indigo-400" />
+            <History className="w-5 h-5 text-cyan-400" />
             <span>Persisted Investigations in FalkorDB</span>
           </h2>
           <p className="text-xs text-slate-400">
@@ -41,7 +41,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onRefresh, on
         </div>
         <button
           onClick={onRefresh}
-          className="px-3 py-1.5 bg-neutrino-800 hover:bg-neutrino-700 text-slate-200 border border-neutrino-700 rounded-lg text-xs font-mono flex items-center space-x-1.5 transition-colors"
+          className="px-3.5 py-2 bg-neutrino-800 hover:bg-neutrino-700 text-slate-200 border border-neutrino-700 rounded-lg text-xs font-mono flex items-center space-x-1.5 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Refresh</span>
@@ -52,7 +52,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onRefresh, on
         <div className="space-y-4">
           <button
             onClick={() => setSelectedResult(null)}
-            className="text-xs font-mono text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
+            className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 font-medium"
           >
             <span>← Back to History List</span>
           </button>
@@ -69,11 +69,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onRefresh, on
               <div
                 key={inv.id}
                 onClick={() => handleSelectHistory(inv.id)}
-                className="bg-neutrino-850 border border-neutrino-750 hover:border-indigo-500/60 p-5 rounded-xl cursor-pointer transition-all hover:shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-neutrino-850 border border-neutrino-750 hover:border-cyan-500/60 p-5 rounded-xl cursor-pointer transition-all hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center space-x-2 font-mono text-xs">
-                    <span className="text-indigo-400 font-bold">{inv.id}</span>
+                    <span className="text-cyan-400 font-semibold">{inv.id}</span>
                     {inv.incidentId && (
                       <span className="bg-neutrino-800 text-slate-300 px-2 py-0.5 rounded border border-neutrino-700">
                         {inv.incidentId}
@@ -90,7 +90,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onRefresh, on
                     <Clock className="w-3.5 h-3.5 text-slate-500" />
                     <span>{new Date(inv.startedAt).toLocaleString()}</span>
                   </div>
-                  <div className="w-7 h-7 rounded-full bg-neutrino-800 flex items-center justify-center text-indigo-400 border border-neutrino-700">
+                  <div className="w-7 h-7 rounded-full bg-neutrino-800 flex items-center justify-center text-cyan-400 border border-neutrino-700">
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </div>

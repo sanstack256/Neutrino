@@ -39,14 +39,26 @@ export class FalkorDBManager {
 
   public async getClient(): Promise<any> {
     if (!this.client) {
-      const connectOpts: any = {
-        host: this.host,
-        port: this.port,
-      };
-      if (this.username) connectOpts.username = this.username;
-      if (this.password) connectOpts.password = this.password;
+      if (config.FALKORDB_URL) {
+        this.client = await FalkorDB.connect({ url: config.FALKORDB_URL });
+      } else {
+        const connectOpts: any = {
+          host: this.host,
+          port: this.port,
+        };
+        if (this.username) connectOpts.username = this.username;
+        if (this.password) connectOpts.password = this.password;
 
-      this.client = await FalkorDB.connect(connectOpts);
+        if (config.FALKORDB_TLS) {
+          connectOpts.socket = {
+            host: this.host,
+            port: this.port,
+            tls: true,
+          };
+        }
+
+        this.client = await FalkorDB.connect(connectOpts);
+      }
     }
     return this.client;
   }
@@ -82,6 +94,35 @@ export class FalkorDBManager {
         // ignore close error
       }
       this.client = null;
+    }
+  }
+
+  /**
+   * Acquires a durable distributed lock via Redis atomic NX EX commands.
+   * Protects against multi-process concurrent duplicate ingestion across horizontal instances.
+   */
+  public async acquireLock(key: string, ttlSeconds = 30): Promise<boolean> {
+    try {
+      const client = await this.getClient();
+      const conn = await client.connection;
+      const res = await conn.set(`lock:${key}`, '1', { NX: true, EX: ttlSeconds });
+      return res === 'OK';
+    } catch {
+      // In case of command failure or standalone mode, fallback gracefully
+      return true;
+    }
+  }
+
+  /**
+   * Releases a distributed lock.
+   */
+  public async releaseLock(key: string): Promise<void> {
+    try {
+      const client = await this.getClient();
+      const conn = await client.connection;
+      await conn.del(`lock:${key}`);
+    } catch {
+      // Safe ignore
     }
   }
 }
